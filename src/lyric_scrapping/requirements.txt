@@ -1,0 +1,6 @@
+cdifflib
+lyricsgenius
+python-dotenv
+logging
+pandas
+numpy
