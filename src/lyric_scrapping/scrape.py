@@ -7,6 +7,7 @@ import logging
 import os
 import contextlib
 import json
+import time
 
 # get secret tokens:
 from dotenv import dotenv_values
@@ -20,10 +21,11 @@ def main():
     sort_method = "title"
     max_songs = 500
     logging_level = 'INFO'
-    save_directory = "data/lyrics"
+    save_directory = "data\lyrics"
 
     # process scraping:
     helper.set_loggings(level=logging_level, func_name="LyricScraper")
+    logging.info("Start scraping %d songs for %s", max_songs, artist_name)
     scraper = LyricScraper(artist_name, max_songs=max_songs, sort_method=sort_method)
     scraper.save(save_directory)
 
@@ -43,10 +45,16 @@ class LyricScraper:
         genius = lyricsgenius.Genius(Genius_key)   # global variable
         with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
             artist_id = genius.search_artist(self.artist_name, max_songs=0, include_features=False).id 
-
+    
         # scrape songs:
-        artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort=self.sort_method)
-
+        while True:
+            try:
+                artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort=self.sort_method)
+                break
+            except:
+                logging.warning("Failed to scrape songs. Retrying...")
+                time.sleep(3)
+                continue
         # save info:
         self.artist = artist
         self.raw_dict = {song.title: song.lyrics for song in artist.songs}
@@ -110,7 +118,7 @@ Total # of Songs scraped: {len(self.raw_dict)}, see lyrics_raw.json for more inf
 Total # of filtered Songs: {len(self.filter_dict)}, see lyrics_filter.json for more info
 Removed due to simialrity check: {len(self.removed_similar_songs)}
 Removed due to invalid title: {len(self.removed_songs)-len(self.removed_similar_songs)}
-        """
+"""
     def save(self, directory):
         subfolder = helper.clean_file_name(f"{self.artist_name} {self.start_time}") 
         self.save_directory = os.path.join(directory, subfolder)
