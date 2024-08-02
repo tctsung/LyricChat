@@ -18,7 +18,7 @@ def main():
     # set parameters:
     artist_name = "Imagine Dragons"
     sort_method = "title"
-    max_songs = 10
+    max_songs = 500
     logging_level = 'INFO'
     save_directory = "data/lyrics"
 
@@ -130,7 +130,7 @@ Removed due to invalid title: {len(self.removed_songs)-len(self.removed_similar_
 
 #### helper functions ####
 def is_valid_song(title):
-    excluded_terms = ["(remix", "(demo)", "(live", "session)"]  
+    excluded_terms = ["remix)", "(demo)", "(live", "session)", "version)"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
 #### End of helper functions ####
 
