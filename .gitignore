@@ -1,5 +1,12 @@
-data/
+# large files
+large_data/
+models/
+
+# temp files
 temp/
+
+# sensitive info
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
