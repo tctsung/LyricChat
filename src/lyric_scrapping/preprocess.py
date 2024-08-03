@@ -22,12 +22,20 @@ def main():
             LyricPreprocessor(file_path, irrelevant_words, save=True)
 
 class LyricPreprocessor:
+    """
+    TODO: preprocess the scraped lyrics to reduce noise and remove irrelevant words
+    """
 	# commonly seen irrelevant words in Genius lyrics:
     default_irrelevant_words = [
         r"You might also like",
         r"\d*Embed$"
     ]
     def __init__(self, file_path: str, irrelevant_words: list, save = False):
+        """
+        param file_path (str): the path of the scraped json file
+        param irrelevant_words (list): a list of irrelevant words to remove from the lyrics
+        param save (bool): whether to save the preprocessed lyrics to the same directory
+        """
         # check file_path is json file:
         assert file_path.endswith(".json"), "file_path must be json file!"
 
@@ -45,9 +53,11 @@ class LyricPreprocessor:
         if save:
             self.save()
     def load_lyrics(self):
+        # TODO: load the scraped lyrics from src\lyric_scrapping\scrape.py
         with open(self.file_path) as f:
             self.lyrics_raw = json.load(f)
     def preprocess(self, min_word_cnt=30):
+        # TODO: preprocess the lyrics
         removed_songs = []
         lyrics_clean = {}
         for title, lyric in self.lyrics_raw.items():

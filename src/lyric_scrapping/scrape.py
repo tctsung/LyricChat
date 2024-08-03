@@ -30,7 +30,16 @@ def main():
     scraper.save(save_directory)
 
 class LyricScraper:
-    def __init__(self, artist_name, max_songs=500, sort_method="title", check_similar_songs=True, threshold=0.6):
+    def __init__(self, artist_name, max_songs=500, sort_method="title", 
+                 check_similar_songs=True, threshold=0.6, retry_times=10):
+        """
+        TODO: scrape lyrics of a specific artist from Genius API
+        param artist_name (str): name of the artist
+        param max_songs (int): maximum number of songs to scrape
+        param sort_method (str): sort method of the songs
+        param check_similar_songs (bool): whether to remove songs with similar lyrics, the shortest song name will be kept
+        param threshold (float): threshold of similarity
+        """
         self.artist_name = artist_name
         self.max_songs = max_songs
         self.sort_method = sort_method
@@ -41,18 +50,23 @@ class LyricScraper:
             self.rm_similar_songs(threshold=threshold)
         
     def scrape_songs(self):
+        # TODO: scrape lyrics from Genius API
         # collect required args:
         genius = lyricsgenius.Genius(Genius_key)   # global variable
         with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
             artist_id = genius.search_artist(self.artist_name, max_songs=0, include_features=False).id 
     
         # scrape songs:
-        while True:
+        while True:       # if failed due to internal error, retry
             try:
                 artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort=self.sort_method)
                 break
             except:
+                if self.retry_times == 0:    # stop if no more retries
+                    logging.error("Failed to scrape songs. Maximum retry times reached.")
+                    exit()
                 logging.warning("Failed to scrape songs. Retrying...")
+                self.retry_times -= 1
                 time.sleep(3)
                 continue
         # save info:
@@ -60,20 +74,21 @@ class LyricScraper:
         self.raw_dict = {song.title: song.lyrics for song in artist.songs}
 
     def check_similarity(self, threshold=0.6, include_raw=False):
-        # calculate the similarity:
-        if include_raw:
+        # TODO: calculate the similarity based on longest contiguous matching subsequence (LCS) algorithm
+        if include_raw:  # use all songs to calculate similarity
             lyrics = [song.lyrics for song in self.artist.songs]
             titles = [song.title for song in self.artist.songs]
-        else:
+        else:   # use valid song titles to calculate similarity
             lyrics = [song.lyrics for song in self.artist.songs if is_valid_song(song.title)]
             titles = [song.title for song in self.artist.songs if is_valid_song(song.title)]
             logging.warning("%d songs were removed due to invalid title", 
                         len(self.raw_dict) - len(titles))
         n = len(titles)
-        similarity_matrix = np.ones((n, n))  
+        similarity_matrix = np.ones((n, n))  # buffer=1 since it's for similarity of song i & song i
         for i in range(n):
             for j in range(i+1, n):  # We only need to fill the upper triangle
-                similarity = max(
+                # calculate similarity based on LCS algorithm
+                similarity = max(     
                     sm(None, lyrics[i], lyrics[j]).ratio(),
                     sm(None, lyrics[j], lyrics[i]).ratio()
                 )
@@ -83,14 +98,14 @@ class LyricScraper:
 
         # identify the ones with high similarity:
         similar_songs = []
-        for index, row in similarity_df.iterrows():
-            above_threshold = row.index[row>threshold].to_list()
+        for index, row in similarity_df.iterrows():   # iterate rowswise
+            above_threshold = row.index[row>threshold].to_list()  # keep the songs above threshold
             if len(above_threshold) > 1:
-                similar_songs.append(above_threshold)
+                similar_songs.append(above_threshold)   # a nested list of similar songs
         removed_similar_songs = []
         for songs in similar_songs:
-            songs.sort(key=len)
-            removed_similar_songs.extend(songs[1:])
+            songs.sort(key=len)       # sort by length because shortest one is usually the original version
+            removed_similar_songs.extend(songs[1:])      # eg. ["Believer", "Believer (Live)"] -> keep "Believer"
         removed_similar_songs = set(removed_similar_songs)
         logging.warning("%d songs were removed due to high similarity, check LyricScraper.removed_songs for more info", 
                         len(removed_similar_songs))
@@ -98,10 +113,12 @@ class LyricScraper:
         self.similarity_df = similarity_df
         self.removed_similar_songs = removed_similar_songs
     def rm_similar_songs(self, threshold=0.6, check_all=False):
-        self.check_similarity(threshold=threshold, include_raw=check_all)
+        # TODO: remove similar songs
+        self.check_similarity(threshold=threshold, include_raw=check_all)  # get similarity matrix
         filter_dict = {}
         removed_songs = []
         for title, lyric in self.raw_dict.items():
+            # keep the songs that are not in removed_similar_songs & title is valid
             if (title not in self.removed_similar_songs) and is_valid_song(title):
                 filter_dict[title] = lyric
             else:
@@ -109,6 +126,7 @@ class LyricScraper:
         self.removed_songs = removed_songs   # include invalid songs in removed_songs
         self.filter_dict = filter_dict
     def create_metadata(self):
+        # TODO: create metadata for the scraped lyrics
         self.end_time = helper.get_timestamp()
         return f"""Start time: {self.start_time}
 End time: {self.end_time}
@@ -120,6 +138,7 @@ Removed due to simialrity check: {len(self.removed_similar_songs)}
 Removed due to invalid title: {len(self.removed_songs)-len(self.removed_similar_songs)}
 """
     def save(self, directory):
+        # TODO: save the lyrics & metadata to specified directory
         subfolder = helper.clean_file_name(f"{self.artist_name} {self.start_time}") 
         self.save_directory = os.path.join(directory, subfolder)
         os.makedirs(self.save_directory, exist_ok=True)
@@ -138,6 +157,7 @@ Removed due to invalid title: {len(self.removed_songs)-len(self.removed_similar_
 
 #### helper functions ####
 def is_valid_song(title):
+    # TODO: check if the title is valid
     excluded_terms = ["remix)", "(demo)", "(live", "session)", "version)"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
 #### End of helper functions ####
