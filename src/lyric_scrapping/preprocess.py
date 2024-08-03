@@ -40,6 +40,10 @@ class LyricPreprocessor:
         # run preprocessing:
         self.load_lyrics()    # load lyrics
         self.preprocess()     # preprocessing
+
+        # save file:
+        if save:
+            self.save()
     def load_lyrics(self):
         with open(self.file_path) as f:
             self.lyrics_raw = json.load(f)
@@ -81,7 +85,7 @@ class LyricPreprocessor:
         self.save_file = file_name[:-5] + "_preprocess" + ".json"
         self.save_path = os.path.join(directory_name, self.save_file)
         with open(self.save_path, 'w') as f:
-            json.dump(self.lyrics_clean, f)
+            json.dump(self.lyrics_clean, f, indent=4)
         logging.info("File `%s` saved at directory `%s`", self.save_file, directory_name)
          
                 

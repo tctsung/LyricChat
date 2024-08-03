@@ -126,10 +126,10 @@ Removed due to invalid title: {len(self.removed_songs)-len(self.removed_similar_
         
         # save raw_dict to json:
         with open(os.path.join(self.save_directory, 'lyrics_raw.json'), 'w') as fp:
-            json.dump(self.raw_dict, fp)
+            json.dump(self.raw_dict, fp, indent=4)
         # save filter_dict to json:
         with open(os.path.join(self.save_directory, 'lyrics_filter.json'), 'w') as fp:
-            json.dump(self.filter_dict, fp)
+            json.dump(self.filter_dict, fp, indent=4)
         # save metadata to LyricScraper.meta:
         with open(os.path.join(self.save_directory, 'LyricScraper.meta'), 'w') as fp:
             fp.write(self.create_metadata())
