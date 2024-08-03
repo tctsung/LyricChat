@@ -34,6 +34,16 @@ def clean_file_name(file_name):
 	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
 	return cleaned_name
 
+def find_files(directory_path = ".", file_extension=".json"):
+	# TODO: find all files in a directory with specific file extension
+    file_paths = []
+    
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(file_extension):
+                file_paths.append(os.path.join(root, file))
+    
+    return file_paths
 ## Suppress stdout:
 # import os
 # import contextlib
