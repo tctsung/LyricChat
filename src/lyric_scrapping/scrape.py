@@ -19,7 +19,7 @@ Genius_key = ENV_VAR['Genius_key']
 # Run this code in the git repo with: `python src/lyric_scrapping/scrape.py`
 def main():
     # set parameters:
-    artist_name = "Imagine Dragons"
+    artist_name = "NF"
     sort_method = "title"
     max_songs = 500
     irrelevant_words = [r"See Imagine Dragons LiveGet tickets as low as \$\d+"]
@@ -31,6 +31,11 @@ def main():
     scraper = LyricScraper(artist_name, max_songs=max_songs, sort_method=sort_method, 
                            irrelevant_words=irrelevant_words, save=True)
 
+def load_LyricScraper(file_path):
+    assert file_path.endswith(".pkl"), "file_path must end with .pkl"
+    with open(file_path, "rb") as f:
+        lyric_scraper = pickle.load(f)
+    return lyric_scraper
 
 class LyricScraper:
     # commonly seen irrelevant words in Genius lyrics:
