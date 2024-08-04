@@ -9,6 +9,7 @@ import contextlib
 import json
 import time
 import re
+import pickle
 
 # get secret tokens:
 from dotenv import dotenv_values
@@ -28,7 +29,8 @@ def main():
     helper.set_loggings(level=logging_level, func_name="LyricScraper")
     logging.info("Start scraping %d songs for %s", max_songs, artist_name)
     scraper = LyricScraper(artist_name, max_songs=max_songs, sort_method=sort_method, 
-                           irrelevant_words=irrelevant_words)
+                           irrelevant_words=irrelevant_words, save=True)
+
 
 class LyricScraper:
     # commonly seen irrelevant words in Genius lyrics:
@@ -124,20 +126,22 @@ class LyricScraper:
         self.processed_dict = processed_dict
     def removed_invalid_titles(self):
         # TODO: remove invalid titles from processed_dict
-        for title in self.processed_dict.keys():
+        for title in self.processed_dict.copy().keys():
             if not is_valid_song(title):
                 self.processed_dict.pop(title)
                 self.invalid_songs.append(title)
                 self.removed_songs.append(title)
-        logging.warning("%d songs were removed due to invalid title", len(self.invalid_songs))
+        if len(self.invalid_songs) > 0:
+            logging.warning("%d songs were removed due to invalid title", len(self.invalid_songs))
     def removed_inadequate_word_cnt(self, min_word_cnt=30):
         # TODO: remove songs with inadequate word count since that might not be lyrics
-        for title, lyric in self.processed_dict.items():
+        for title, lyric in self.processed_dict.copy().items():
             if len(lyric.split()) < min_word_cnt:
                 self.processed_dict.pop(title)
                 self.inadquate_len_songs.append(title)
                 self.removed_songs.append(title)
-        logging.warning("%d songs were removed due to inadequate word count", len(self.inadquate_len_songs))
+        if len(self.inadquate_len_songs) > 0:
+            logging.warning("%d songs were removed due to inadequate word count", len(self.inadquate_len_songs))
 
     def check_similarity(self, threshold=0.6, do_raw=False):
         # TODO: calculate the similarity based on longest contiguous matching subsequence (LCS) algorithm
@@ -184,12 +188,13 @@ class LyricScraper:
         highly_similar_songs = set(highly_similar_songs)
         
         # remove similar songs:
-        for title in self.processed_dict.keys():
+        for title in self.processed_dict.copy().keys():
             if title in highly_similar_songs:
                 self.removed_songs.append(title)
                 self.highly_similar_songs.append(title)
                 self.processed_dict.pop(title)
-        logging.warning("%d songs were removed due to similar lyrics", len(self.highly_similar_songs))
+        if len(self.highly_similar_songs) > 0:
+            logging.warning("%d songs were removed due to similar lyrics", len(self.highly_similar_songs))
     def create_metadata(self):
         # TODO: create metadata for the scraped lyrics
         self.end_time = helper.get_timestamp()
@@ -197,14 +202,15 @@ class LyricScraper:
 End time: {self.end_time}
 Artist name: {self.artist_name}
 Saved to: {self.save_directory}
-Total # of Songs scraped: {len(self.raw_dict)}, see lyrics_raw.json for more info
-Total # of filtered Songs: {len(self.processed_dict)}, see lyrics_filter.json for more info
-Removed due to invalid title: {len(self.invalid_songs)}, see LyricScraper.invalid_songs for more info
-Removed due to inadequate word count: {len(self.inadquate_len_songs)}, see LyricScraper.inadquate_len_songs for more info
-Removed due to simialrity check: {len(self.highly_similar_songs)}, see LyricScraper.highly_similar_songs for more info
+OOP object: LyricScraper.pickle
+Total # of Songs scraped: {len(self.raw_dict)} (see lyrics_raw.json for more info)
+Total # of filtered Songs: {len(self.processed_dict)} (see lyrics_filter.json for more info)
+Removed due to invalid title: {len(self.invalid_songs)} (see LyricScraper.invalid_songs for more info)
+Removed due to inadequate word count: {len(self.inadquate_len_songs)} (see LyricScraper.inadquate_len_songs for more info)
+Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricScraper.highly_similar_songs for more info)
 """
     def save(self, directory = "data\lyrics"):
-        # TODO: save the lyrics & metadata to specified directory
+        # TODO: save the lyrics, OOP object, and metadata to specified directory
         subfolder = helper.clean_file_name(f"{self.artist_name} {self.start_time}") 
         self.save_directory = os.path.join(directory, subfolder)
         os.makedirs(self.save_directory, exist_ok=True)
@@ -218,13 +224,16 @@ Removed due to simialrity check: {len(self.highly_similar_songs)}, see LyricScra
         # save metadata to LyricScraper.meta:
         with open(os.path.join(self.save_directory, 'LyricScraper.meta'), 'w') as fp:
             fp.write(self.create_metadata())
+        # save the OOP itself as pickle:
+        with open(os.path.join(self.save_directory, 'LyricScraper.pickle'), 'wb') as f:
+            pickle.dump(self, f)
 
         logging.info("Files saved to %s, see LyricScraper.meta for more info", self.save_directory)
 
 #### helper functions ####
 def is_valid_song(title):
     # TODO: check if the title is valid
-    excluded_terms = ["remix)", "(demo)", "(live", "session)", "version)"]  
+    excluded_terms = ["(acoustic", "[acoustic", "remix)", "remix]", "(demo", "[demo", "[live", "(live", "session)", "session]", "version)", "version]"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
 #### End of helper functions ####
 
