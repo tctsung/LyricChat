@@ -1,0 +1,10 @@
+Start time: 2024-08-04 19:11:43
+End time: 2024-08-04 19:19:25
+Artist name: NF
+Saved to: data\lyrics\NF_2024_08_04_19_11_43
+OOP object: LyricScraper.pickle
+Total # of Songs scraped: 148 (see lyrics_raw.json for more info)
+Total # of filtered Songs: 133 (see lyrics_filter.json for more info)
+Removed due to invalid title: 5 (see LyricScraper.invalid_songs for more info)
+Removed due to inadequate word count: 5 (see LyricScraper.inadquate_len_songs for more info)
+Removed due to simialrity check: 5 (see LyricScraper.highly_similar_songs for more info)
