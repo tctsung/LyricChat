@@ -1,0 +1,4 @@
+pandas
+numpy
+langchain
+langchain-community

@@ -1,0 +1,17 @@
+version: "3"
+services:
+  ollama:
+    # TODO: initiate ollama service for LLM
+    image: ollama/ollama:0.3.4
+    container_name: ollama
+    ports:
+      - 11434:11434
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
