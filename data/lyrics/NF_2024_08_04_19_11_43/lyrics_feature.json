@@ -1,0 +1,800 @@
+{
+    "10 Feet Down": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Struggle, Self-Doubt, and Resilience"
+    },
+    "3 A.M.": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Heartbreak, Betrayal, and Disillusionment"
+    },
+    "All I Do": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Competition, Self-Confidence, and Authenticity"
+    },
+    "All I Have": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Struggle, Perseverance, and Self-Expression"
+    },
+    "All I Have (Deutsche \u00dcbersetzung)": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Rap, Identity, and Struggle"
+    },
+    "Alone": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Isolation, Pain, and Hope"
+    },
+    "Another Vibe (Snippet)": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Childhood Trauma, Emotional Pain, and Abandonment"
+    },
+    "Beautiful": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Brokenness, Insecurity, and Hopelessness"
+    },
+    "Beautiful Addiction": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Redemption, and Transformation"
+    },
+    "Breathe": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Disconnection, Pain, and Regret"
+    },
+    "BULLET": {
+        "sentiment": "Positive",
+        "primary_emotion": "Love/Affection",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Love, Sacrifice, and Protection"
+    },
+    "Can You Hold Me": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Loneliness/Isolation",
+        "theme": "Heartbreak, Loneliness, and Desperation"
+    },
+    "CAREFUL": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Gratitude/Appreciation",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Gratitude, Success, and Risk"
+    },
+    "Change": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Change, Pain, and Insecurity"
+    },
+    "Circles": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Self-Blame, Struggle, and Redemption"
+    },
+    "CLOUDS": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Ambition, Self-Discovery, and Resilience"
+    },
+    "Destiny": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Destiny, Self-Discovery, and Ambition"
+    },
+    "Dreams": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Regret, Self-Discovery, and Struggle"
+    },
+    "DRIFTING": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Drifting, Struggle, and Self-Doubt"
+    },
+    "Escape": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Escape, Pain, and Struggle"
+    },
+    "Evolving*": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Disillusionment, Commercialization, and Frustration"
+    },
+    "Face It": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Confusion/Uncertainty",
+        "theme": "Struggle, Self-Discovery, and Inner Turmoil"
+    },
+    "Falling Apart": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Heartbreak, Betrayal, and Disillusionment"
+    },
+    "Fine Arts Festival 2008": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Pain, Suffering, and Salvation"
+    },
+    "Fine Arts Festival 2009": {
+        "sentiment": "Positive",
+        "primary_emotion": "Empowerment/Confidence",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Jesus, Power, and Salvation"
+    },
+    "Goodbye": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Longing/Desire",
+        "theme": "Heartbreak, Goodbye, and Longing"
+    },
+    "Got You On My Mind": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Longing/Desire",
+        "secondary_emotion": "Nostalgia/Melancholy",
+        "theme": "Love, Intimacy, and Vulnerability"
+    },
+    "Green Lights": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Real, Authentic, and Determined"
+    },
+    "Grindin\u2019": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Grind, Work, and Success"
+    },
+    "Halv Kanin": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Crime, Betrayal, and Power"
+    },
+    "Hands Up": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Authenticity, and Vulnerability"
+    },
+    "HAPPY": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Depression, Self-Doubt, and Isolation"
+    },
+    "Hard as Stone* (Snippet)": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Childhood Trauma, Emotional Pain, and Vulnerability"
+    },
+    "Hate Myself": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Self-Hate, Hopelessness, and Despair"
+    },
+    "HOPE": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Hope, Redemption, and Self-Discovery"
+    },
+    "How Could You Leave Us": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Family, Addiction, and Loss"
+    },
+    "I Can Feel It": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Struggle, Resilience, and Hope"
+    },
+    "If You Want Love": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Contentment/Peace",
+        "secondary_emotion": "Nostalgia/Melancholy",
+        "theme": "Love, Pain, and Change"
+    },
+    "I Got Jesus": {
+        "sentiment": "Positive",
+        "primary_emotion": "Empowerment/Confidence",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Salvation, Faith, and God"
+    },
+    "I Just Need a Moment*": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Change, Disappointment, and Uncertainty"
+    },
+    "I Just Wanna Know": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Betrayal, Disconnection, and Heartbreak"
+    },
+    "I\u2019ll Keep On": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Trust, Freedom, and Redemption"
+    },
+    "I\u2019m Free": {
+        "sentiment": "Positive",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Freedom, Redemption, and Salvation"
+    },
+    "I\u2019m Gonna Fly": {
+        "sentiment": "Positive",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Empowerment/Confidence",
+        "theme": "Freedom, Self-Discovery, and Hope"
+    },
+    "I Miss the Days": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Loss of Innocence, Struggle with Mental Health, and Longing for Simpler Times"
+    },
+    "I\u2019m Ready": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Empowerment/Confidence",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Self-empowerment, Resilience, and Rebellion"
+    },
+    "-Interlude-": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Disillusionment, Self-Doubt, and Unhappiness"
+    },
+    "Intro": {
+        "sentiment": "Positive",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Music, Competition, and Self-Improvement"
+    },
+    "Intro 2": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Mental Health, Self-Discovery, and Struggle"
+    },
+    "Intro III": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Control, Anger, and Confusion"
+    },
+    "Invisible": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Invisibility, Disconnection, and Heartbreak"
+    },
+    "I\u2019ve Been There": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Pain, Loss, and Struggle"
+    },
+    "Just Being Me": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Authenticity, Self-Discovery, and Perseverance"
+    },
+    "JUST LIKE YOU": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Empowerment/Confidence",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Mental Health, Self-Discovery, and Hope"
+    },
+    "Know": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Authenticity, and Ambition"
+    },
+    "LAYERS": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Resilience, and Authenticity"
+    },
+    "Leave Me Alone": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Mental Health, Self-Doubt, and Isolation"
+    },
+    "LET EM PRAY": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Resilience, Sacrifice, and Prayer"
+    },
+    "Let Me Go": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Freedom, Control, and Pain"
+    },
+    "Let You Down": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Disappointment, Regret, and Heartache"
+    },
+    "Lie": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Betrayal, Deception, and Heartbreak"
+    },
+    "Like This": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Heartbreak, Self-Doubt, and Disillusionment"
+    },
+    "LOST": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Loss, Struggle, and Self-Discovery"
+    },
+    "Lost in the Moment": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Pain, Regret, and Lost"
+    },
+    "MAMA": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Nostalgia/Melancholy",
+        "secondary_emotion": "Empowerment/Confidence",
+        "theme": "Family, Love, and Grief"
+    },
+    "Mansion": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Pain, Regret, and Isolation"
+    },
+    "Miss You": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Longing/Desire",
+        "theme": "Loss, Longing, and Sorrow"
+    },
+    "MISTAKE": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Self-Doubt, Resentment, and Anxiety"
+    },
+    "Moments": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Dreams, Ambition, and Self-Discovery"
+    },
+    "Motivated": {
+        "sentiment": "Positive",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Passion, Motivation, and Confidence"
+    },
+    "MOTTO": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Disappointment/Regret",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Industry, Authenticity, and Creativity"
+    },
+    "My Life": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Nostalgia/Melancholy",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Family, and Relationships"
+    },
+    "My Stress": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Stress, Negativity, and Self-Doubt"
+    },
+    "Nate": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Trauma, Insecurities, and Struggle"
+    },
+    "No Excuses": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "No Excuses, Self-Teaching, and Confidence"
+    },
+    "No Limitations (Snippet)": {
+        "sentiment": "Positive",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Empowerment/Confidence",
+        "theme": "Limitation, Creativity, and Confidence"
+    },
+    "NO NAME": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-discovery, Authenticity, and Struggle"
+    },
+    "Notepad": {
+        "sentiment": "Positive",
+        "primary_emotion": "Nostalgia/Melancholy",
+        "secondary_emotion": "Hope/Optimism",
+        "theme": "Friendship, Growth, and Overcoming"
+    },
+    "Not Going Anywhere* (Snippet)": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Fear, Anxiety, and Demons"
+    },
+    "Not the Same": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Struggle, Redemption, and Self-Reflection"
+    },
+    "Oh Lord": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Contentment/Peace",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "God, Prayer, and Existence"
+    },
+    "On Another Level": {
+        "sentiment": "Positive",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Ambition, Self-Confidence, and Competition"
+    },
+    "One Hundred": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Hustle, Authenticity, and Disillusionment"
+    },
+    "Only One": {
+        "sentiment": "Positive",
+        "primary_emotion": "Love/Affection",
+        "secondary_emotion": "Hope/Optimism",
+        "theme": "Love, Commitment, and Hope"
+    },
+    "Only One (feat. Shuree Williams)": {
+        "sentiment": "Positive",
+        "primary_emotion": "Gratitude/Appreciation",
+        "secondary_emotion": "Hope/Optimism",
+        "theme": "God, Hope, and Acceptance"
+    },
+    "Options": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Options, Success, and Struggle"
+    },
+    "Outcast": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Outcast, Rejection, and Self-Discovery"
+    },
+    "Outro": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Passion, Authenticity, and Self-Discovery"
+    },
+    "Overdose": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Salvation, Hope, and Redemption"
+    },
+    "PAID MY DUES": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Frustration, Disillusionment, and Resilience"
+    },
+    "PANDEMONIUM": {
+        "sentiment": "Positive",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Confidence, Self-Reliance, and Ambition"
+    },
+    "Paralyzed": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Paralysis, Loss, and Isolation"
+    },
+    "PRIDEFUL": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Betrayal, Deceit, and Disillusionment"
+    },
+    "Questions (Original Got You on my Mind)": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Uncertainty, Self-Doubt, and Fear"
+    },
+    "Raw (Snippet)": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Industry, Authenticity, and Struggle"
+    },
+    "Real": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Real, Authentic, and Vulnerable"
+    },
+    "Reality": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Reality, Pain, and Rejection"
+    },
+    "Remember This": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Self-Discovery, Authenticity, and Rebellion"
+    },
+    "Returns": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Confusion/Uncertainty",
+        "theme": "Self-Doubt, Anger, and Frustration"
+    },
+    "RUNNING": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Heartbreak, Sacrifice, and Freedom"
+    },
+    "Statement": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Industry, Authenticity, and Frustration"
+    },
+    "STORY": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Chaos, Violence, and Desperation"
+    },
+    "SUFFICE": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Self-Reflection, Resilience, and Ambition"
+    },
+    "THAT\u2019S A JOKE": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Self-Confidence, Criticism, and Humor"
+    },
+    "That\u2019s Alright": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Longing/Desire",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Relationship, Heartache, and Vulnerability"
+    },
+    "The One": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Longing/Desire",
+        "theme": "Love, Confusion, and Uncertainty"
+    },
+    "Therapy Session": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Mental Health, Realness, and Authenticity"
+    },
+    "The Search": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Mental Health, Self-Discovery, and Struggle"
+    },
+    "Thing Called Love": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Confusion/Uncertainty",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Love, Confusion, and Pain"
+    },
+    "Thinking": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Contentment/Peace",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Reflection, Sacrifice, and Introspection"
+    },
+    "Time": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Time, Change, and Vulnerability"
+    },
+    "Trauma": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Trauma, Isolation, and Helplessness"
+    },
+    "TRUST": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Trust, Betrayal, and Self-Discovery"
+    },
+    "TURN MY BACK": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Independence, Self-Reliance, and Disillusionment"
+    },
+    "Turn the Music Up": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Music, Motivation, and Frustration"
+    },
+    "Understand Me": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-Discovery, Overcoming Adversity, and Resilience"
+    },
+    "Unreleased 3 (Snippet)": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Industry, Authenticity, and Struggle"
+    },
+    "Unreleased 4 (Snippet)": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Identity, Self-Discovery, and Struggle"
+    },
+    "Until I Die": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Contentment/Peace",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Faith, Hope, and Truth"
+    },
+    "Vibe in the Sky (Original Remember This)": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Contentment/Peace",
+        "secondary_emotion": "Contentment/Peace",
+        "theme": "Vibe, Angels, and Right Now"
+    },
+    "Vibin\u2019": {
+        "sentiment": "Positive",
+        "primary_emotion": "Empowerment/Confidence",
+        "secondary_emotion": "Nostalgia/Melancholy",
+        "theme": "Love, Growth, and Self-Discovery"
+    },
+    "Wait": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Heartbreak, Longing, and Desperation"
+    },
+    "Wake Up": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Wake Up, Coma, and Regret"
+    },
+    "Warm Up": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Disappointment/Regret",
+        "theme": "Authenticity, Ambition, and Self-Expression"
+    },
+    "Warm Up (Original) [Snippet]": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Freedom, Authenticity, and Self-Expression"
+    },
+    "When I Grow Up": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Self-doubt, Ambition, and Struggle"
+    },
+    "WHY": {
+        "sentiment": "Negative",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Self-Doubt, Isolation, and Vulnerability"
+    },
+    "Wish You Wouldn\u2019t": {
+        "sentiment": "Negative",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Sadness/Sorrow",
+        "theme": "Relationship, Struggle, and Confusion"
+    },
+    "With Me": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Anger/Frustration",
+        "secondary_emotion": "Empowerment/Confidence",
+        "theme": "Self-Expression, Christianity, and Authenticity"
+    },
+    "Wordsmith (Snippet)*": {
+        "sentiment": "Neutral",
+        "primary_emotion": "Fear/Anxiety",
+        "secondary_emotion": "Fear/Anxiety",
+        "theme": "Work, Perfection, and Struggle"
+    },
+    "Wrap Me in Your Arms": {
+        "sentiment": "Positive",
+        "primary_emotion": "Hope/Optimism",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Faith, Redemption, and Hope"
+    },
+    "You\u2019re Special": {
+        "sentiment": "Positive",
+        "primary_emotion": "Love/Affection",
+        "secondary_emotion": "Gratitude/Appreciation",
+        "theme": "Love, Trust, and Appreciation"
+    },
+    "Your Grace": {
+        "sentiment": "Negative",
+        "primary_emotion": "Sadness/Sorrow",
+        "secondary_emotion": "Anger/Frustration",
+        "theme": "Struggle, Pain, and Desperation"
+    }
+}
