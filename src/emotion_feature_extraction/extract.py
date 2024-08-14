@@ -24,67 +24,6 @@ def main():       # python .\src\lyric_metadata\extract.py
     set_loggings(level=logging_level, func_name="EmotionExtractor")
     meta_extractor = EmotionExtractor(lyric_path, gguf_path)
 
-
-#### Helper functions ####
-@guidance
-def llm_extraction(lm, artist, title, lyric): 
-    # self-defined func for prompt engineering:
-    # TODO: use LLM to extract lyric features
-    pattern = "[a-zA-Z -]+, [a-zA-Z -]+, and [a-zA-Z -]+"   # pattern for 3 keywords: eg. Self-Discovery, Heartbreak, Letting Go
-    with silent():
-        lm += f"""
-* Provided song information:
-Artist: {artist}
-Title: {title}
-Lyric: 
-```
-{lyric}
-```
-\n
-* Sentiment Analysis
-
-Overall Sentiment: {select(EmotionExtractor.sentiments, name = 'sentiment')}
-Primary Emotion: {select(EmotionExtractor.emotions, name='primary_emotion')}
-Secondary Emotion (this must be different to the primary emotion): {select(EmotionExtractor.emotions, name='secondary_emotion')}
-Theme/keyword: use three keywords to describe the theme of the above lyric: {gen(name="theme", regex=pattern, temperature=0.2)}"""
-    return lm
-
-def set_loggings(level=logging.INFO, func_name=''):
-	"""
-	TODO: set logging levels
-	"""
-	if isinstance(level, str):
-		log_levels = {
-			'DEBUG': logging.DEBUG,
-			'INFO': logging.INFO,
-			'WARNING': logging.WARNING,
-			'ERROR': logging.ERROR,
-			'CRITICAL': logging.CRITICAL
-		}
-		level = log_levels[level]
-	# Remove all handlers associated with the root logger object:
-	for handler in logging.root.handlers[:]:
-		logging.root.removeHandler(handler)
-	logging.basicConfig(
-		level=level,                              # set logging level
-		format='----- %(levelname)s (%(asctime)s) ----- \n%(message)s\n')	 # set messsage format
-	logging.critical(
-		'Hello %s, The current logging level is: %s', 
-		func_name,
-		logging.getLevelName(logging.getLogger().getEffectiveLevel()))
-
-def get_timestamp():
-	current_timestamp = datetime.now()
-	return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
-def get_artist_name(path):
-    # TODO: get artist name from LyricScraper.meta
-    directory = os.path.dirname(path)
-    with open(os.path.join(directory, 'LyricScraper.meta'), 'r') as fp:
-        for line in fp:
-            if line.startswith('Artist name: '):
-                return line.split(':')[1].strip()
-##### End of helper functions ####
-
 class EmotionExtractor:
     """
     TODO: classify emotions of given texts
@@ -187,6 +126,65 @@ Output file: lyrics_feature.json
             fp.write(self.create_metadata())
         logging.info("File `lyrics_feature.json` & `EmotionExtractor.meta` saved to: %s", self.directory)
 
+#### Helper functions ####
+@guidance
+def llm_extraction(lm, artist, title, lyric): 
+    # self-defined func for prompt engineering:
+    # TODO: use LLM to extract lyric features
+    pattern = "[a-zA-Z -]+, [a-zA-Z -]+, and [a-zA-Z -]+"   # pattern for 3 keywords: eg. Self-Discovery, Heartbreak, Letting Go
+    with silent():
+        lm += f"""
+* Provided song information:
+Artist: {artist}
+Title: {title}
+Lyric: 
+```
+{lyric}
+```
+\n
+* Sentiment Analysis
+
+Overall Sentiment: {select(EmotionExtractor.sentiments, name = 'sentiment')}
+Primary Emotion: {select(EmotionExtractor.emotions, name='primary_emotion')}
+Secondary Emotion (this must be different to the primary emotion): {select(EmotionExtractor.emotions, name='secondary_emotion')}
+Theme/keyword: use three keywords to describe the theme of the above lyric: {gen(name="theme", regex=pattern, temperature=0.2)}"""
+    return lm
+
+def set_loggings(level=logging.INFO, func_name=''):
+	"""
+	TODO: set logging levels
+	"""
+	if isinstance(level, str):
+		log_levels = {
+			'DEBUG': logging.DEBUG,
+			'INFO': logging.INFO,
+			'WARNING': logging.WARNING,
+			'ERROR': logging.ERROR,
+			'CRITICAL': logging.CRITICAL
+		}
+		level = log_levels[level]
+	# Remove all handlers associated with the root logger object:
+	for handler in logging.root.handlers[:]:
+		logging.root.removeHandler(handler)
+	logging.basicConfig(
+		level=level,                              # set logging level
+		format='----- %(levelname)s (%(asctime)s) ----- \n%(message)s\n')	 # set messsage format
+	logging.critical(
+		'Hello %s, The current logging level is: %s', 
+		func_name,
+		logging.getLevelName(logging.getLogger().getEffectiveLevel()))
+
+def get_timestamp():
+	current_timestamp = datetime.now()
+	return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+def get_artist_name(path):
+    # TODO: get artist name from LyricScraper.meta
+    directory = os.path.dirname(path)
+    with open(os.path.join(directory, 'LyricScraper.meta'), 'r') as fp:
+        for line in fp:
+            if line.startswith('Artist name: '):
+                return line.split(':')[1].strip()
+##### End of helper functions ####
 
 if __name__ == '__main__':
 	main()      # the func to run
