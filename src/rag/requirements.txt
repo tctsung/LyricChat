@@ -2,3 +2,6 @@ pandas
 numpy
 langchain
 langchain-community
+qdrant-client[fastembed-gpu]
+unidecode
+onnxruntime==1.15.1
