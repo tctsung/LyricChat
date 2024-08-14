@@ -1,5 +1,5 @@
 # LyricChat
-Aims to create an AI chatbot that emulates the unique lyrical style and tone of specific musical artists
+Aims to create an AI chatbot that connects with users emotionally and recommends a song that matches their current mood.
 
 <img src="data/friendly_chatbot_b.jpg" width="500">
 
