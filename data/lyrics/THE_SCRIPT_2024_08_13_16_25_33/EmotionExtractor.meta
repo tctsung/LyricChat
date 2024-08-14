@@ -1,0 +1,17 @@
+Start time: 2024-08-14 01:16:51
+End time: 2024-08-14 02:17:37
+Features explanation:
+- sentiment categories: ['Positive', 'Negative', 'Neutral']
+- emotion categories: ['Joy/Happiness', 'Love/Affection', 'Nostalgia/Melancholy', 'Sadness/Sorrow', 'Anger/Frustration', 'Fear/Anxiety', 'Hope/Optimism', 'Longing/Desire', 'Empowerment/Confidence', 'Disappointment/Regret', 'Contentment/Peace', 'Excitement/Enthusiasm', 'Loneliness/Isolation', 'Gratitude/Appreciation', 'Confusion/Uncertainty']
+- theme: A string of 3 keywords representing the theme of the lyric; seperated by comma & "and"
+Summary:
+Total songs: 85
+- sentiment: {'Negative': 37, 'Neutral': 27, 'Positive': 21}
+- total_emotion: {'Sadness/Sorrow': 40, 'Fear/Anxiety': 25, 'Anger/Frustration': 24, 'Empowerment/Confidence': 16, 'Longing/Desire': 15, 'Hope/Optimism': 12, 'Nostalgia/Melancholy': 11, 'Gratitude/Appreciation': 8, 'Contentment/Peace': 6, 'Disappointment/Regret': 4, 'Joy/Happiness': 3, 'Love/Affection': 3, 'Excitement/Enthusiasm': 2, 'Confusion/Uncertainty': 1}
+- primary_emotion: {'Sadness/Sorrow': 28, 'Empowerment/Confidence': 15, 'Longing/Desire': 10, 'Contentment/Peace': 5, 'Anger/Frustration': 5, 'Fear/Anxiety': 5, 'Nostalgia/Melancholy': 5, 'Love/Affection': 3, 'Hope/Optimism': 2, 'Gratitude/Appreciation': 2, 'Joy/Happiness': 2, 'Confusion/Uncertainty': 1, 'Disappointment/Regret': 1, 'Excitement/Enthusiasm': 1}
+- secondary_emotion: {'Fear/Anxiety': 20, 'Anger/Frustration': 19, 'Sadness/Sorrow': 12, 'Hope/Optimism': 10, 'Nostalgia/Melancholy': 6, 'Gratitude/Appreciation': 6, 'Longing/Desire': 5, 'Disappointment/Regret': 3, 'Joy/Happiness': 1, 'Excitement/Enthusiasm': 1, 'Empowerment/Confidence': 1, 'Contentment/Peace': 1}
+File location:
+Model: models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+Input & output data directory: data\lyrics\THE_SCRIPT_2024_08_13_16_25_33 
+Input file: lyrics_filter.json
+Output file: lyrics_feature.json
