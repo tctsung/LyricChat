@@ -4,7 +4,7 @@ models/
 
 # temp files
 temp/
-genius/
+**/genius/**/*.json
 
 # sensitive info
 .env
