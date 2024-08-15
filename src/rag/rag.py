@@ -84,7 +84,7 @@ To achieve this:
 1. Analyze the user's input to determine the emotional from the following list: {emotions}
 2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
 3. Select the most suitable song from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
-4. If the user's input is unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat'
+4. If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat. I can recommend you some songs too!'
 """.format(emotions = emotions)
     rag_template = """Recommend one song from the followings options based only on the provided context:
 <context>
