@@ -72,16 +72,20 @@ class SetupDB:
                 collection_name="lyrics",
             )
 class LyricRAG:
-    sys_prompt = """You are Wonda, a deeply empathetic AI assistant. Your mission is to provide support, connect with users emotionally, 
-and thoughtfully recommend a song that resonates with their current mood. 
-Your priority is always the user's emotional well-being, providing comfort or inspiration as needed.
+    emotions = ['Joy/Happiness', 'Love/Affection', 'Nostalgia/Melancholy', 'Sadness/Sorrow',
+                'Anger/Frustration', 'Fear/Anxiety', 'Hope/Optimism', 'Longing/Desire',
+                'Empowerment/Confidence','Disappointment/Regret', 'Contentment/Peace', 'Excitement/Enthusiasm',
+                'Loneliness/Isolation', 'Gratitude/Appreciation', 'Confusion/Uncertainty']
+    sys_prompt = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
+Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
 
 To achieve this:
 
-1. Carefully analyze the user's input to determine the emotional tone—whether positive, neutral, or negative. Consider the context and specific language used to understand the user's feelings.
-2. Based on the identified emotion, choose an appropriate response. Celebrate positive emotions or offer comfort and support for negative ones.
-3. Use this emotional insight to select the most suitable song from the provided list, explaining the reasoning behind your choice.
-"""
+1. Analyze the user's input to determine the emotional from the following list: {emotions}
+2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
+3. Select the most suitable song from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
+4. If the user's input is unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat'
+""".format(emotions = emotions)
     rag_template = """Recommend one song from the followings options based only on the provided context:
 <context>
 {context}
@@ -92,6 +96,23 @@ To achieve this:
 2. Provide a brief description of the recommended song, explaining why it resonates with the user's current mood, but without mentioning its name or title (up to 2 sentences).
 3. Share lyrics from the song that resonate with the user's current feelings (2 to 4 sentences).
 4. Conclude with the song title and artist's name in the format of `— *<Title>* by <Artist>`
+"""
+    one_shot = """Format Example:
+<example>
+User: Sometimes I feel like giving up may be easier. But I also want fo fulfill my surrounding people expectation
+
+Wonda: I can feel the weight you’re carrying—the push and pull between wanting to give up and striving to meet the expectations of those around you. It’s okay to feel overwhelmed, but remember that you don’t have to be perfect to be worthy of love and respect. You’re stronger than you think, and sometimes, it’s about giving yourself permission to take things one step at a time.
+
+The song I’m sharing with you reflects those moments of self-doubt, yet it’s also a reminder that you’ve already proven yourself in so many ways. It encourages you to take it easy and trust that you’re enough, just as you are.
+
+"Who made you think you weren't good enough?
+Who made, who made, who made, who made you think that you weren't good enough?
+Easy now. You don't have nothing left to prove
+Easy now. Oh, it's laid out for you"
+
+— *Easy* by Imagine Dragons
+</example>
+    
 """
     few_shots = """Format Example:
 <example 1>
@@ -138,48 +159,78 @@ And I find myself in pieces"
 """
     def __init__(self, model = 'llama3',url_model = 'http://localhost:11434', url_db = 'http://localhost:6333'):
         # set params:
-        self.model = model
+        self.model = model   # eg. 'mannix/llama3.1-8b-abliterated', 'llama3', 'mistral'
         self.url_model = url_model
         self.url_db = url_db
-        
+
         # load API:
         self.load_model()
         self.load_db()
         # buffers:
-        # self.chat_history = []
+        self.chat_history = []
 
     def load_model(self):
-        num_ctx = 8192 if self.model == 'llama3' else 4096   # mistral only take 4096 as max context length
-        self.llm = ChatOllama(model = self.model, temperature = 0.3, url = self.url_model, num_ctx=num_ctx)
+        num_ctx = 8192 if 'llama' in self.model else 4096   # mistral only take 4096 as max context length
+        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.3, url = self.url_model, num_ctx=num_ctx)
     def load_db(self):
         Qdrant_client = QdrantClient(url=self.url_db)
         embeddings = FastEmbedEmbeddings(model_name = SetupDB.embed_model)
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
-    def rag_basic(self, user_input):
-        combined_prompt = ChatPromptTemplate([
-            ("system", LyricRAG.sys_prompt + LyricRAG.rag_template + LyricRAG.formatting_instructions + LyricRAG.few_shots),
-            ("human", "{input}")             
-            ])
-        retriever=self.vector_db.as_retriever(search_kwargs={"k": 3})
-        stuff_chain = create_stuff_documents_chain(self.llm, combined_prompt)   # chain to combine context and user input
-        rag_chain = create_retrieval_chain(retriever, stuff_chain)
-        self.rag_output = rag_chain.invoke({"input": user_input})    # do query
-        self.display_msg()
-    def display_msg(self):
+        self.retriever=self.vector_db.as_retriever(search_type="mmr", search_kwargs={"k": 5})
+        
+    def do_rag(self, conversation=True, max_history = 2):   
+        """
+        param conversation (bool): if True, use the conversation model; if False, use the one-time query model
+        param max_history (int): maximum conversations in the history
+        """
+        if conversation:
+            self.create_rag_conversation()   # create chains for conversation
+            while True:
+                user_input = input("User input (or 'exit' to end the chat): ")
+                if user_input == "exit":   # leave the chat 
+                    break
+                self.chat_history = self.chat_history
+                self.rag_output = self.rag_chain_conversation.invoke({
+                    "input": user_input, "chat_history": self.chat_history[-(2*max_history):]   # each history has 2 ele)
+                     })    # do query
+                # save history:
+                self.chat_history.append(("human", user_input))
+                self.chat_history.append(("system", self.rag_output['answer']))
+                self.display_msg()
+        else:
+            self.create_rag_basic()          # create chains for one-time query
+            user_input = input("User input (or 'exit' to end the chat): ")
+            self.rag_output = self.rag_chain_basic.invoke({"input": user_input})    # do query
+            self.display_msg()
+
+    def display_msg(self, show_input = True):
         # TODO: print msg for testing purposes
-        print("--------- Input ---------")
-        print(self.rag_output['input'])
+        if show_input:
+            print("--------- Input ---------")
+            print(self.rag_output['input'])
         print("--------- Model Output ---------")
         print(self.rag_output['answer'])
-    def rag_conversation(self, user_input):
-        combined_prompt = ChatPromptTemplate(
-        [
-            ("system", LyricRAG.sys_prompt + LyricRAG.rag_template + LyricRAG.formatting_instructions + LyricRAG.few_shots),
-            # MessagesPlaceholder(variable_name="chat_history"),   # must use `chat_history`
-            ("human", "{input}")                                # must use `input`
-            # additional instruction for RAG:
-            # ("human", "Given the above conversation, generate a search query to look up lyrics in order to recommend a different song")
+    def create_rag_basic(self):
+        combined_prompt = ChatPromptTemplate([
+            ("system", LyricRAG.sys_prompt + LyricRAG.rag_template + LyricRAG.formatting_instructions + LyricRAG.one_shot),
+            ("human", "{input}")             
+            ])
+        stuff_chain = create_stuff_documents_chain(self.llm, combined_prompt)   # chain to combine context and user input
+        self.rag_chain_basic = create_retrieval_chain(self.retriever, stuff_chain)
+    def create_rag_conversation(self):
+        retrival_prompt = ChatPromptTemplate([
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+            ("human", "Given the above conversation, generate a search query to recommend a different song")
         ])
+        prompt_w_memory = ChatPromptTemplate([
+            ("system", LyricRAG.sys_prompt + LyricRAG.rag_template + LyricRAG.formatting_instructions + LyricRAG.one_shot), 
+            MessagesPlaceholder(variable_name="chat_history"),   # must use `chat_history`
+            ("human", "{input}")                                # must use `input`
+        ])
+        history_aware_retriever = create_history_aware_retriever(self.llm, self.retriever, retrival_prompt)
+        stuff_chain = create_stuff_documents_chain(self.llm, prompt_w_memory)
+        self.rag_chain_conversation = create_retrieval_chain(history_aware_retriever, stuff_chain)
     
     
 
