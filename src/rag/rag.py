@@ -13,6 +13,8 @@ from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
+# filter
+from qdrant_client.http import models
 # langchain output parser
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel
@@ -180,20 +182,22 @@ And I find myself in pieces"
         Qdrant_client = QdrantClient(url=self.url_db)
         embeddings = FastEmbedEmbeddings(model_name = SetupDB.embed_model)
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
-        self.retriever=self.vector_db.as_retriever(search_type="mmr", search_kwargs={"k": 5})
         
     def naive_rag(self, conversation=True, max_history = 2):   
         """
         param conversation (bool): if True, use the conversation model; if False, use the one-time query model
         param max_history (int): maximum conversations in the history
         """
+        
+        # create retriever for both one-time & conversation: search_type="mmr" is not suitable for filtering
+        self.retriever=self.vector_db.as_retriever(search_type="similarity_score_threshold",     
+                                                   search_kwargs={"score_threshold": 0.1, "k": 3})  
         if conversation:   # with conversation history
             self.create_rag_conversation()   # create chains for conversation
             while True:
                 user_input = input("User input (or 'exit' to end the chat): ")
                 if user_input == "exit":   # leave the chat 
                     break
-                self.chat_history = self.chat_history
                 self.rag_output = self.rag_chain_conversation.invoke({
                     "input": user_input, "chat_history": self.chat_history[-(2*max_history):]   # each history has 2 ele)
                      })    # do query
@@ -206,7 +210,37 @@ And I find myself in pieces"
             user_input = input("User input (or 'exit' to end the chat): ")
             self.rag_output = self.rag_chain_basic.invoke({"input": user_input})    # do query
             self.display_msg()
-
+    def advanced_rag(self, max_history=2):
+        self.create_sentiment_chain()   # create chain for sentiment analysis
+        while True:
+            user_input = input("User input (or 'exit' to end the chat): ")
+            if user_input == "exit":   # leave the chat 
+                break
+            sentiment_output = self.sentiment_analysis(user_input)
+            print(f"Calssified sentiment: {sentiment_output.sentiment}, emotion: {sentiment_output.emotion}")
+            
+            if (sentiment_output.emotion == ""):   # don't do filtering if can't classify sentiment
+                self.create_rag_conversation(customized_retriever = self.retriever)  # regular retriever
+            else:
+                # update conversation chain with filter: 
+                customized_retriever = self.create_customized_retriever(sentiment_output.emotion)
+                self.create_rag_conversation(customized_retriever = customized_retriever)
+            
+            # do query:
+            self.rag_output = self.rag_chain_conversation.invoke({
+                    "input": user_input, "chat_history": self.chat_history[-(2*max_history):]   # each history has 2 ele)
+                     })    # do query
+            # save history:
+            self.chat_history.append(("human", user_input))
+            self.chat_history.append(("system", self.rag_output['answer']))
+            self.display_msg()
+    def create_customized_retriever(self, emotion):
+        # TODO: vector DB primary and secondary emotion must be classified emotion
+        filter = models.Filter(should = [
+                    models.FieldCondition(key="metadata.primary_emotion", match=models.MatchValue(value=emotion)),
+                    models.FieldCondition(key="metadata.secondary_emotion", match=models.MatchValue(value=emotion))
+                    ])
+        return self.vector_db.as_retriever(search_kwargs={'filter': filter, "k": 3})
     def display_msg(self, show_input = True):
         # TODO: print msg for testing purposes
         if show_input:
@@ -221,10 +255,11 @@ And I find myself in pieces"
             ])
         stuff_chain = create_stuff_documents_chain(self.llm, combined_prompt)   # chain to combine context and user input
         self.rag_chain_basic = create_retrieval_chain(self.retriever, stuff_chain)
-    def create_rag_conversation(self):
+    def create_rag_conversation(self, customized_retriever = None):
         """
         create naive RAG chain
         """
+        retriever = customized_retriever if customized_retriever is not None else self.retriever
         retrival_prompt = ChatPromptTemplate([
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"),
@@ -235,12 +270,12 @@ And I find myself in pieces"
             MessagesPlaceholder(variable_name="chat_history"),   # must use `chat_history`
             ("human", "{input}")                                # must use `input`
         ])
-        history_aware_retriever = create_history_aware_retriever(self.llm, self.retriever, retrival_prompt)
+        history_aware_retriever = create_history_aware_retriever(self.llm, retriever, retrival_prompt)
         stuff_chain = create_stuff_documents_chain(self.llm, prompt_w_memory)
         self.rag_chain_conversation = create_retrieval_chain(history_aware_retriever, stuff_chain)
     def create_sentiment_chain(self):
         """
-        TODO: create chain for emotion & sentiment classification
+        TODO: create chain for emotion & sentiment classification. The LLM output will only contain the sentiment and emotion.
         """
         class SentimentSchema(BaseModel):
             sentiment: Literal[*LyricRAG.sentiments]
@@ -274,6 +309,7 @@ Provide only the classification results in the specified format, without any add
         sentiment_output = self.sentiment_chain.invoke({
             "input": user_input, "sentiments": LyricRAG.sentiments, "emotions": LyricRAG.emotions})
         return sentiment_output   # sentiment_output.sentiment, sentiment_output.emotion
+
 ######## Helper Functions ########
 def get_artist_name(directory):
     # TODO: get artist name from LyricScraper.meta
