@@ -10,10 +10,13 @@ from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 # RAG:
 from langchain_community.llms import Ollama
 from langchain_community.chat_models import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
-
+# langchain output parser
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel
+from typing import Literal
 
 # Future work: 
 # add chat history for LyricRAG
@@ -72,10 +75,11 @@ class SetupDB:
                 collection_name="lyrics",
             )
 class LyricRAG:
+    sentiments = ['Positive', 'Negative', 'Neutral', '']   # empty string for unknown sentiment & unknown emotion
     emotions = ['Joy/Happiness', 'Love/Affection', 'Nostalgia/Melancholy', 'Sadness/Sorrow',
                 'Anger/Frustration', 'Fear/Anxiety', 'Hope/Optimism', 'Longing/Desire',
                 'Empowerment/Confidence','Disappointment/Regret', 'Contentment/Peace', 'Excitement/Enthusiasm',
-                'Loneliness/Isolation', 'Gratitude/Appreciation', 'Confusion/Uncertainty']
+                'Loneliness/Isolation', 'Gratitude/Appreciation', 'Confusion/Uncertainty', '']
     sys_prompt = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
 
@@ -85,7 +89,7 @@ To achieve this:
 2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
 3. Select the most suitable song from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
 4. If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat. I can recommend you some songs too!'
-""".format(emotions = emotions)
+""".format(emotions = LyricRAG.emotions[:-1])
     rag_template = """Recommend one song from the followings options based only on the provided context:
 <context>
 {context}
@@ -178,12 +182,12 @@ And I find myself in pieces"
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
         self.retriever=self.vector_db.as_retriever(search_type="mmr", search_kwargs={"k": 5})
         
-    def do_rag(self, conversation=True, max_history = 2):   
+    def naive_rag(self, conversation=True, max_history = 2):   
         """
         param conversation (bool): if True, use the conversation model; if False, use the one-time query model
         param max_history (int): maximum conversations in the history
         """
-        if conversation:
+        if conversation:   # with conversation history
             self.create_rag_conversation()   # create chains for conversation
             while True:
                 user_input = input("User input (or 'exit' to end the chat): ")
@@ -218,6 +222,9 @@ And I find myself in pieces"
         stuff_chain = create_stuff_documents_chain(self.llm, combined_prompt)   # chain to combine context and user input
         self.rag_chain_basic = create_retrieval_chain(self.retriever, stuff_chain)
     def create_rag_conversation(self):
+        """
+        create naive RAG chain
+        """
         retrival_prompt = ChatPromptTemplate([
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"),
@@ -231,9 +238,42 @@ And I find myself in pieces"
         history_aware_retriever = create_history_aware_retriever(self.llm, self.retriever, retrival_prompt)
         stuff_chain = create_stuff_documents_chain(self.llm, prompt_w_memory)
         self.rag_chain_conversation = create_retrieval_chain(history_aware_retriever, stuff_chain)
-    
-    
+    def create_sentiment_chain(self):
+        """
+        TODO: create chain for emotion & sentiment classification
+        """
+        class SentimentSchema(BaseModel):
+            sentiment: Literal[*LyricRAG.sentiments]
+            emotion: Literal[*LyricRAG.emotions]
+        sentiment_parser = PydanticOutputParser(pydantic_object=SentimentSchema)
+        prompt_template = """You are a Sentiment Analysis expert.
+Analyze the following user input and classify the user's sentiment and emotion.
+The sentiment must be one of: {sentiments}
+The emotion must be one of: {emotions}
 
+If the user input is too vague or doesn't contain enough information to determine the sentiment or emotion, classify it as empty string '' for both sentiment and emotion.
+
+{format_instructions}
+
+Provide only the classification results in the specified format, without any additional explanation.
+
+<user input>
+{input}
+</user input>
+"""
+        prompt = PromptTemplate(
+            template=prompt_template,
+            input_variables=["input", "sentiments", "emotions"],
+            partial_variables={"format_instructions": sentiment_parser.get_format_instructions()}
+        )
+        self.sentiment_chain = prompt | self.llm | sentiment_parser
+    def sentiment_analysis(self, user_input):
+        """
+        TODO: do sentiment/emotion classification
+        """
+        sentiment_output = self.sentiment_chain.invoke({
+            "input": user_input, "sentiments": LyricRAG.sentiments, "emotions": LyricRAG.emotions})
+        return sentiment_output   # sentiment_output.sentiment, sentiment_output.emotion
 ######## Helper Functions ########
 def get_artist_name(directory):
     # TODO: get artist name from LyricScraper.meta

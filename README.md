@@ -25,6 +25,8 @@ A python OOP function that utilize LLM to do sentiment analysis and add metadata
 A python OOP function that retrieves song lyrics and recommend songs based on the user's emotion
 
 **Tools**
-- Prompt engineering: CoT, few shots
+- Prompt engineering: CoT, few shots, edge cases 
 - Database: Qdrant
 - LLM: Ollama, Langchain
+- chain design:
+to be constructed
