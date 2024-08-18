@@ -1,13 +1,14 @@
+# cd LyricChat repo folder before running this compose file
 version: "3"
 services:
   ollama:
-    # TODO: initiate ollama service for LLM
+    # LLM local server
     image: ollama/ollama:0.3.4
     container_name: ollama
     ports:
       - 11434:11434
     volumes:
-      - ollama:/root/.ollama
+      - ./models/ollama:/root/.ollama
     deploy:
       resources:
         reservations:
@@ -15,3 +16,11 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+  qdrant:
+    # database server
+    image: qdrant/qdrant:v1.10.1
+    container_name: qdrant
+    ports:
+      - 6333:6333
+    volumes:
+      - ./data/qdrant:/qdrant/storage:z

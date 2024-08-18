@@ -91,7 +91,7 @@ To achieve this:
 2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
 3. Select the most suitable song from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
 4. If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat. I can recommend you some songs too!'
-""".format(emotions = LyricRAG.emotions[:-1])
+""".format(emotions = emotions[:-1])
     rag_template = """Recommend one song from the followings options based only on the provided context:
 <context>
 {context}
@@ -99,8 +99,8 @@ To achieve this:
 """
     formatting_instructions = """\nYour response should follow this structure:
 1. Begin with a short paragraph that offers emotional support and connects with the user (up to 4 sentences).
-2. Provide a brief description of the recommended song, explaining why it resonates with the user's current mood, but without mentioning its name or title (up to 2 sentences).
-3. Share lyrics from the song that resonate with the user's current feelings (2 to 4 sentences).
+2. Provide a brief description of the recommended song, explaining why it resonates with the user's current mood, but without mentioning its name or title (less than 2 sentences).
+3. Share lyrics from the song that resonate with the user's current feelings, focus on the lyrics without additional commentary (2 to 4 sentences).
 4. Conclude with the song title and artist's name in the format of `— *<Title>* by <Artist>`
 """
     one_shot = """Format Example:
@@ -177,21 +177,21 @@ And I find myself in pieces"
 
     def load_model(self):
         num_ctx = 8192 if 'llama' in self.model else 4096   # mistral only take 4096 as max context length
-        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.3, url = self.url_model, num_ctx=num_ctx)
+        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.5, url = self.url_model, num_ctx=num_ctx)
     def load_db(self):
         Qdrant_client = QdrantClient(url=self.url_db)
         embeddings = FastEmbedEmbeddings(model_name = SetupDB.embed_model)
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
-        
-    def naive_rag(self, conversation=True, max_history = 2):   
+        self.retriever=self.vector_db.as_retriever(search_type="similarity_score_threshold",     
+                                                   search_kwargs={"score_threshold": 0.1, "k": 3}) 
+    def naive_rag(self, conversation=True, memory = 2):   
         """
         param conversation (bool): if True, use the conversation model; if False, use the one-time query model
         param max_history (int): maximum conversations in the history
         """
         
         # create retriever for both one-time & conversation: search_type="mmr" is not suitable for filtering
-        self.retriever=self.vector_db.as_retriever(search_type="similarity_score_threshold",     
-                                                   search_kwargs={"score_threshold": 0.1, "k": 3})  
+         
         if conversation:   # with conversation history
             self.create_rag_conversation()   # create chains for conversation
             while True:
@@ -199,7 +199,7 @@ And I find myself in pieces"
                 if user_input == "exit":   # leave the chat 
                     break
                 self.rag_output = self.rag_chain_conversation.invoke({
-                    "input": user_input, "chat_history": self.chat_history[-(2*max_history):]   # each history has 2 ele)
+                    "input": user_input, "chat_history": self.chat_history[-(2*memory):]   # each history has 2 ele)
                      })    # do query
                 # save history:
                 self.chat_history.append(("human", user_input))
@@ -210,7 +210,7 @@ And I find myself in pieces"
             user_input = input("User input (or 'exit' to end the chat): ")
             self.rag_output = self.rag_chain_basic.invoke({"input": user_input})    # do query
             self.display_msg()
-    def advanced_rag(self, max_history=2):
+    def advanced_rag(self, memory=2):
         self.create_sentiment_chain()   # create chain for sentiment analysis
         while True:
             user_input = input("User input (or 'exit' to end the chat): ")
@@ -228,14 +228,18 @@ And I find myself in pieces"
             
             # do query:
             self.rag_output = self.rag_chain_conversation.invoke({
-                    "input": user_input, "chat_history": self.chat_history[-(2*max_history):]   # each history has 2 ele)
+                    "input": user_input, "chat_history": self.chat_history[-(2*memory):]   # each history has 2 ele)
                      })    # do query
             # save history:
             self.chat_history.append(("human", user_input))
             self.chat_history.append(("system", self.rag_output['answer']))
             self.display_msg()
+
+
     def create_customized_retriever(self, emotion):
         # TODO: vector DB primary and secondary emotion must be classified emotion
+        if emotion == "Unidentified" or emotion == "":
+            return self.retriever
         filter = models.Filter(should = [
                     models.FieldCondition(key="metadata.primary_emotion", match=models.MatchValue(value=emotion)),
                     models.FieldCondition(key="metadata.secondary_emotion", match=models.MatchValue(value=emotion))
@@ -273,6 +277,7 @@ And I find myself in pieces"
         history_aware_retriever = create_history_aware_retriever(self.llm, retriever, retrival_prompt)
         stuff_chain = create_stuff_documents_chain(self.llm, prompt_w_memory)
         self.rag_chain_conversation = create_retrieval_chain(history_aware_retriever, stuff_chain)
+        return self.rag_chain_conversation
     def create_sentiment_chain(self):
         """
         TODO: create chain for emotion & sentiment classification. The LLM output will only contain the sentiment and emotion.
@@ -306,9 +311,10 @@ Provide only the classification results in the specified format, without any add
         """
         TODO: do sentiment/emotion classification
         """
+        # self.create_sentiment_chain()                       # create chain for sentiment analysis
         sentiment_output = self.sentiment_chain.invoke({
             "input": user_input, "sentiments": LyricRAG.sentiments, "emotions": LyricRAG.emotions})
-        return sentiment_output   # sentiment_output.sentiment, sentiment_output.emotion
+        return sentiment_output.sentiment, sentiment_output.emotion
 
 ######## Helper Functions ########
 def get_artist_name(directory):

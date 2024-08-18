@@ -6,3 +6,4 @@ langchain-qdrant
 qdrant-client[fastembed-gpu]
 unidecode
 onnxruntime==1.15.1
+streamlit
