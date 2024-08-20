@@ -5,16 +5,13 @@ Aims to create an AI chatbot that connects with users emotionally and recommends
 
 ### ChatBot workflow
 
-<img src="data/readme/query_workflow.png" width="640">
+<img src="data/readme/query_workflow.png" width="1080">
 
 ### Demo video
 
 * version: 0.1.0
 
-<video width="640" height="360" controls>
-  <source src='data/readme/demo.mp4' type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/43a7fd44-5a54-4fc2-bce6-8e726cc33ea3
 
 # Environment
 
