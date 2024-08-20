@@ -10,6 +10,7 @@ import json
 import time
 import re
 import pickle
+from datetime import datetime
 
 # get secret tokens:
 from dotenv import dotenv_values
@@ -19,14 +20,14 @@ Genius_key = ENV_VAR['Genius_key']
 # Run this code in the git repo with: `python src/lyric_scrapping/scrape.py`
 def main():
     # set parameters:
-    artist_name = "NF"
+    artist_name = "Post Malone"
     sort_method = "title"
     max_songs = 500
-    irrelevant_words = [r"See Imagine Dragons LiveGet tickets as low as \$\d+"]
+    irrelevant_words = [r"See Post Malone LiveGet tickets as low as \$\d+"]
     logging_level = 'INFO'
 
     # process scraping:
-    helper.set_loggings(level=logging_level, func_name="LyricScraper")
+    set_loggings(level=logging_level, func_name="LyricScraper")
     logging.info("Start scraping %d songs for %s", max_songs, artist_name)
     scraper = LyricScraper(artist_name, max_songs=max_songs, sort_method=sort_method, 
                            irrelevant_words=irrelevant_words, save=True)
@@ -70,7 +71,7 @@ class LyricScraper:
         self.inadquate_len_songs = []
 
         # process scraping:
-        self.start_time = helper.get_timestamp()
+        self.start_time = get_timestamp()
         self.scrape_songs()
         self.preprocess()
         if filter_songs:
@@ -202,7 +203,7 @@ class LyricScraper:
             logging.warning("%d songs were removed due to similar lyrics", len(self.highly_similar_songs))
     def create_metadata(self):
         # TODO: create metadata for the scraped lyrics
-        self.end_time = helper.get_timestamp()
+        self.end_time = get_timestamp()
         return f"""Start time: {self.start_time}
 End time: {self.end_time}
 Artist name: {self.artist_name}
@@ -216,7 +217,7 @@ Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricScra
 """
     def save(self, directory = "data\lyrics"):
         # TODO: save the lyrics, OOP object, and metadata to specified directory
-        subfolder = helper.clean_file_name(f"{self.artist_name} {self.start_time}") 
+        subfolder = clean_file_name(f"{self.artist_name} {self.start_time}") 
         self.save_directory = os.path.join(directory, subfolder)
         os.makedirs(self.save_directory, exist_ok=True)
         
@@ -240,6 +241,54 @@ def is_valid_song(title):
     # TODO: check if the title is valid
     excluded_terms = ["(acoustic", "[acoustic", "remix)", "remix]", "(demo", "[demo", "[live", "(live", "session)", "session]", "version)", "version]"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
+def set_loggings(level=logging.INFO, func_name=''):
+	"""
+	TODO: set logging levels
+	"""
+	if isinstance(level, str):
+		log_levels = {
+			'DEBUG': logging.DEBUG,
+			'INFO': logging.INFO,
+			'WARNING': logging.WARNING,
+			'ERROR': logging.ERROR,
+			'CRITICAL': logging.CRITICAL
+		}
+		level = log_levels[level]
+	# Remove all handlers associated with the root logger object:
+	for handler in logging.root.handlers[:]:
+		logging.root.removeHandler(handler)
+	logging.basicConfig(
+		level=level,                              # set logging level
+		format='----- %(levelname)s (%(asctime)s) ----- \n%(message)s\n')	 # set messsage format
+	logging.critical(
+		'Hello %s, The current logging level is: %s', 
+		func_name,
+		logging.getLevelName(logging.getLogger().getEffectiveLevel()))
+
+def get_timestamp():
+	current_timestamp = datetime.now()
+	return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+def clean_file_name(file_name):
+	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
+	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
+	return cleaned_name
+
+def find_files(directory_path = ".", file_extension=".json"):
+	# TODO: find all files in a directory with specific file extension
+    file_paths = []
+    
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(file_extension):
+                file_paths.append(os.path.join(root, file))
+    
+    return file_paths
+## Suppress stdout:
+# import os
+# import contextlib
+# with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+#     "Your code..."
 #### End of helper functions ####
 
 if __name__ == '__main__':
