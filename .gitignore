@@ -4,7 +4,7 @@ models/
 
 # temp files
 temp/
-**/genius/**/*.json
+**/chat_history/
 
 # sensitive info
 .env
