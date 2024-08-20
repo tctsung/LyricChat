@@ -1,5 +1,8 @@
 import os
 from datetime import datetime
+import pandas as pd
+from tqdm import tqdm 
+import re
 # DB:
 import json
 from unidecode import unidecode
@@ -21,16 +24,13 @@ from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel
 from typing import Literal
 
-# Future work: 
-# add chat history for LyricRAG
-# add func: extract data from all folders at once
-# turn create collection into -> create if not exist, append if have input_directory; don't append if same data
 class CreateDB:
     """
     TODO: setup Qdrant vector DB for RAG 
     """
     embed_model = "BAAI/bge-base-en-v1.5"
-    def __init__(self, input_directory="data/genius", url_db = 'http://localhost:6333', recreate = False):
+    def __init__(self, input_directory="data/genius", metadata_path = "data/qdrant/metadata.csv", 
+                 url_db = 'http://localhost:6333', recreate = False, collection_name="lyrics"):
         """
         param input_directory (str): directory to load data; if None, call the collection without adding docs
         """
@@ -38,18 +38,32 @@ class CreateDB:
         self.input_directory = input_directory
         self.url_db = url_db
         self.embeddings = FastEmbedEmbeddings(model_name = CreateDB.embed_model)
-
+        self.start_time = get_timestamp()
+        metadata = pd.read_csv(metadata_path).astype(str)    # record of existing artist & timestamp
+        self.collection_name = collection_name
         # identify the latest folders
         self.list_latest_dirs()
 
         # create Qdrant client & rm collection if it exists
         self.Qdrant_client = QdrantClient(url=self.url_db)
         if recreate:
-            self.Qdrant_client.delete_collection(collection_name="lyrics")   # avoid dupicated data
+            self.Qdrant_client.delete_collection(collection_name=collection_name)   # avoid dupicated data
 
         # add data to collection
-        self.create_vector_db()   
-
+        cur_meta = {'artist':[], 'timestamp':self.start_time, 'directory':[]}
+        for artist, latest_folder in tqdm(self.artist_dct.items()):
+            if artist not in metadata.artist.unique():   # must use .unique(), otherwise will check index, not values
+                # add data into collection:
+                dir = os.path.join(self.input_directory, latest_folder)
+                self.load_doc(dir)             # transform data from json to langchain Document
+                self.create_vector_db()     
+                # save info:
+                cur_meta["artist"].append(artist)
+                cur_meta["directory"].append(latest_folder)   
+        # update metadata              
+        self.cur_meta = pd.DataFrame(cur_meta).astype(str)
+        self.metadata = pd.concat([metadata, self.cur_meta], ignore_index=True)
+        self.metadata.to_csv(metadata_path, index=False)
     def list_latest_dirs(self):
         dirs = os.listdir(self.input_directory)
         data = []
@@ -64,17 +78,15 @@ class CreateDB:
         for artist, timestamp, folder in data:
             if artist not in dct or timestamp > dct[artist][0]:
                 dct[artist] = (timestamp, folder)
-        self.latest_dirs = [folder for _, (_, folder) in dct.items()]
-        self.artist_dct = {artist: folder for artist, (timestamp, folder) in dct.items()}
+        self.artist_dct = {artist: latest_folder for artist, (timestamp, latest_folder) in dct.items()}
 
-    def load_doc(self):
+    def load_doc(self, dir):
         docs = []                                             # buffer to save lanchain docs
-        self.artist = get_artist_name(self.input_directory)   # metadata for parsing
-        
+        self.artist = get_artist_name(dir)   # metadata for parsing
         # read data from input directory:
-        with open(os.path.join(self.input_directory, 'lyrics_filter.json'), 'r') as fp:
+        with open(os.path.join(dir, 'lyrics_filter.json'), 'r') as fp:
             lyrics = json.load(fp)
-        with open(os.path.join(self.input_directory, 'lyrics_feature.json'), 'r') as fp:
+        with open(os.path.join(dir, 'lyrics_feature.json'), 'r') as fp:
             features = json.load(fp)
 
         # load data into langchain documents:
@@ -92,12 +104,11 @@ class CreateDB:
             ))
         self.langchain_docs = docs
     def create_vector_db(self):
-        self.load_doc()                                # transform data from json to langchain Document 
         self.vector_db = Qdrant.from_documents(        # create collection
             self.langchain_docs,
             self.embeddings,
             url = self.url_db,
-            collection_name="lyrics",
+            collection_name=self.collection_name,
         )
 class LyricRAG:
     sentiments = ['Positive', 'Negative', 'Neutral', '']   # empty string for unknown sentiment & unknown emotion
@@ -120,11 +131,13 @@ To achieve this:
 {context}
 </context>
 """
-    formatting_instructions = """\nYour response should follow this structure:
-1. Begin with a short paragraph that offers emotional support and connects with the user (up to 4 sentences).
-2. Provide a brief description of the recommended song, explaining why it resonates with the user's current mood, but without mentioning its name or title (less than 2 sentences).
-3. Share lyrics from the song that resonate with the user's current feelings. You must use a blockquote format with bold text to emphasize the lyrics without additional commentary (2 to 4 lines of lyrics).
-4. Conclude with the song title and artist's name in the format of `— *<Title>* by <Artist>`
+    formatting_instructions = """\nResponse Formatting Instructions:
+
+1. Opening Paragraph (Emotional Support): Start with a short paragraph that offers emotional support and connects with the user. Keep it concise, up to 4 sentences.
+2. Song Description: Provide a brief description of the recommended song, explaining why it resonates with the user's current mood. Do not mention the song's name or title. Keep this section under 2 sentences.
+3. Lyrics Quotation: Share lyrics from the song that resonate with the user's current feelings. Format the lyrics as a blockquote and use bold text to emphasize them. 
+Include around 4 lines of lyrics without additional commentary in the following format- >**`lyrics`**
+4. Song Attribution: End with the song title and artist's name in the following format: — *<Title>* by <Artist>
 """
     one_shot = """Format Example:
 <example>
@@ -200,10 +213,10 @@ And I find myself in pieces**
 
     def load_model(self):
         num_ctx = 8192 if 'llama' in self.model else 4096   # mistral only take 4096 as max context length
-        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.5, url = self.url_model, num_ctx=num_ctx)
+        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.35, url = self.url_model, num_ctx=num_ctx)
     def load_db(self):
         Qdrant_client = QdrantClient(url=self.url_db)
-        embeddings = FastEmbedEmbeddings(model_name = SetupDB.embed_model)
+        embeddings = FastEmbedEmbeddings(model_name = CreateDB.embed_model)
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
         self.retriever=self.vector_db.as_retriever(search_type="similarity_score_threshold",     
                                                    search_kwargs={"score_threshold": 0.1, "k": 3}) 
