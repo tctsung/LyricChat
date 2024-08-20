@@ -8,7 +8,7 @@ import json
 from unidecode import unidecode
 from langchain_core.documents import Document
 from qdrant_client import QdrantClient
-from langchain.vectorstores import Qdrant
+from langchain_community.vectorstores import Qdrant
 # from langchain_qdrant import Qdrant
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 # RAG:
@@ -279,7 +279,6 @@ And I find myself in pieces**
             self.chat_history.append(("human", user_input))
             self.chat_history.append(("system", self.rag_output['answer']))
             self.display_msg()
-
 
     def create_customized_retriever(self, emotion="", artist=None):
         # TODO: vector DB primary and secondary emotion must be classified emotion

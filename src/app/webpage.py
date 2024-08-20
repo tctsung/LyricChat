@@ -5,6 +5,7 @@ from streamlit_player import st_player   # embedd music/video
 import os
 import re
 import uuid    # unique ID
+import time
 from datetime import datetime
 import sys
 sys.path.append("src/rag/")
@@ -29,7 +30,7 @@ artist_lst.insert(0, "All Artists")
 chat_history_dir = "data/chat_history/"
 
 
-def main():
+def main():          # streamlit run src/app/webpage.py
     setup_config()   # setup basic info
     load_chat_history()   # load chat history
     artist = None if st.session_state.selected_artist == "All Artists" else st.session_state.selected_artist
@@ -99,7 +100,8 @@ def load_chat_history():
         st.session_state.session_ID = uuid.uuid4().hex
         # create an empty excel file for chat history:
         chat_history_file = chat_history_dir + f"chat_history_{st.session_state.session_ID}.xlsx"
-        pd.DataFrame(columns=["session_ID", "timestamp", "role", "content"]).to_excel(chat_history_file, engine="openpyxl", index=False)
+        df_empty = pd.DataFrame(columns=["session_ID", "timestamp", "role", "content"])
+        df_empty.to_excel(chat_history_file, engine="openpyxl", index=False)
     else:
         # show chat history on UI page:
         for msg in st.session_state.chat_history:
@@ -132,7 +134,6 @@ class Chatbot:
     def chat(self, retry=3):
         # TODO: initialize conversation
         user_input = st.chat_input("Share what's on your mind. Wonda will find the perfect song to match your mood!")   # start chatting
-
         if user_input:
             st.session_state.chat_history.append(HumanMessage(content=user_input))
             save_chat_history()
@@ -148,6 +149,7 @@ class Chatbot:
                     progress_bar = st.progress(10*(4-retry), text="Failed to classify sentiment and emotion... retrying...")
                     user_input = self.rag_app.rewrite_user_input(user_input)   # rewrite user input when can't get proper classification
                     retry -= 1
+                    time.sleep(0.1)
             
             self.sentiment = "Unidentified" if sentiment == "" else sentiment       # Replace empty strings with "Unidentified"
             self.emotion = "Unidentified" if emotion == "" else emotion

@@ -14,9 +14,9 @@ import numpy as np
 # 2. Let lamma-cpp-python use GPU for faster inference
 # 3. Do parallel processing or batch processing in inference
 
-def main():       # python .\src\lyric_metadata\extract.py
+def main():       # python .\src\emotion_feature_extraction\extract.py
     # set args:
-    lyric_path = "data/lyrics/NF_2024_08_04_19_11_43/lyrics_filter.json"
+    lyric_path = "data\lyrics\THE_SCRIPT_2024_08_13_16_25_33\lyrics_filter.json"
     gguf_path = "models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
     logging_level = 'INFO'
 
