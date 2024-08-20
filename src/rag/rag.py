@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 # DB:
 import json
 from unidecode import unidecode
@@ -16,7 +17,7 @@ from langchain.chains import create_retrieval_chain, create_history_aware_retrie
 # filter
 from qdrant_client.http import models
 # langchain output parser
-from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel
 from typing import Literal
 
@@ -24,22 +25,48 @@ from typing import Literal
 # add chat history for LyricRAG
 # add func: extract data from all folders at once
 # turn create collection into -> create if not exist, append if have input_directory; don't append if same data
-class SetupDB:
+class CreateDB:
     """
     TODO: setup Qdrant vector DB for RAG 
     """
     embed_model = "BAAI/bge-base-en-v1.5"
-    def __init__(self, input_directory=None, url_db = 'http://localhost:6333'):
+    def __init__(self, input_directory="data/genius", url_db = 'http://localhost:6333', recreate = False):
         """
         param input_directory (str): directory to load data; if None, call the collection without adding docs
         """
         # set params:
         self.input_directory = input_directory
         self.url_db = url_db
-        self.embeddings = FastEmbedEmbeddings(model_name = SetupDB.embed_model)
+        self.embeddings = FastEmbedEmbeddings(model_name = CreateDB.embed_model)
 
-        # setup DB:
+        # identify the latest folders
+        self.list_latest_dirs()
+
+        # create Qdrant client & rm collection if it exists
+        self.Qdrant_client = QdrantClient(url=self.url_db)
+        if recreate:
+            self.Qdrant_client.delete_collection(collection_name="lyrics")   # avoid dupicated data
+
+        # add data to collection
         self.create_vector_db()   
+
+    def list_latest_dirs(self):
+        dirs = os.listdir(self.input_directory)
+        data = []
+        # collect folder info:
+        for folder in dirs:
+            parts = folder.split('_')
+            artist = ' '.join(parts[:-6])
+            timestamp = datetime.strptime('_'.join(parts[-6:]), '%Y_%m_%d_%H_%M_%S')
+            data.append((artist, timestamp, folder))
+        # keep the latest folder for each artist
+        dct = {}
+        for artist, timestamp, folder in data:
+            if artist not in dct or timestamp > dct[artist][0]:
+                dct[artist] = (timestamp, folder)
+        self.latest_dirs = [folder for _, (_, folder) in dct.items()]
+        self.artist_dct = {artist: folder for artist, (timestamp, folder) in dct.items()}
+
     def load_doc(self):
         docs = []                                             # buffer to save lanchain docs
         self.artist = get_artist_name(self.input_directory)   # metadata for parsing
@@ -65,17 +92,13 @@ class SetupDB:
             ))
         self.langchain_docs = docs
     def create_vector_db(self):
-        if self.input_directory is None:                   # call the collection without adding docs
-            Qdrant_client = QdrantClient(url=self.url_db)
-            self.vector_db = Qdrant(client=Qdrant_client, embeddings = self.embeddings, collection_name="lyrics")
-        else:
-            self.load_doc()                                # transform data from json to langchain Document 
-            self.vector_db = Qdrant.from_documents(        # create collection
-                self.langchain_docs,
-                self.embeddings,
-                url = self.url_db,
-                collection_name="lyrics",
-            )
+        self.load_doc()                                # transform data from json to langchain Document 
+        self.vector_db = Qdrant.from_documents(        # create collection
+            self.langchain_docs,
+            self.embeddings,
+            url = self.url_db,
+            collection_name="lyrics",
+        )
 class LyricRAG:
     sentiments = ['Positive', 'Negative', 'Neutral', '']   # empty string for unknown sentiment & unknown emotion
     emotions = ['Joy/Happiness', 'Love/Affection', 'Nostalgia/Melancholy', 'Sadness/Sorrow',
@@ -89,10 +112,10 @@ To achieve this:
 
 1. Analyze the user's input to determine the emotional from the following list: {emotions}
 2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
-3. Select the most suitable song from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
+3. Reference the most suitable song lyrics from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
 4. If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, 'Hmm, Wonda's having a bit of trouble to figure that one out! But I'm all ears if you want to chat. I can recommend you some songs too!'
 """.format(emotions = emotions[:-1])
-    rag_template = """Recommend one song from the followings options based only on the provided context:
+    rag_template = """Recommend one song from the followings options based ONLY on the provided context:
 <context>
 {context}
 </context>
@@ -100,21 +123,21 @@ To achieve this:
     formatting_instructions = """\nYour response should follow this structure:
 1. Begin with a short paragraph that offers emotional support and connects with the user (up to 4 sentences).
 2. Provide a brief description of the recommended song, explaining why it resonates with the user's current mood, but without mentioning its name or title (less than 2 sentences).
-3. Share lyrics from the song that resonate with the user's current feelings, focus on the lyrics without additional commentary (2 to 4 sentences).
+3. Share lyrics from the song that resonate with the user's current feelings. You must use a blockquote format with bold text to emphasize the lyrics without additional commentary (2 to 4 lines of lyrics).
 4. Conclude with the song title and artist's name in the format of `— *<Title>* by <Artist>`
 """
     one_shot = """Format Example:
 <example>
-User: Sometimes I feel like giving up may be easier. But I also want fo fulfill my surrounding people expectation
+input: Sometimes I feel like giving up may be easier. But I also want fo fulfill my surrounding people expectation
 
-Wonda: I can feel the weight you’re carrying—the push and pull between wanting to give up and striving to meet the expectations of those around you. It’s okay to feel overwhelmed, but remember that you don’t have to be perfect to be worthy of love and respect. You’re stronger than you think, and sometimes, it’s about giving yourself permission to take things one step at a time.
+output: I can feel the weight you’re carrying—the push and pull between wanting to give up and striving to meet the expectations of those around you. It’s okay to feel overwhelmed, but remember that you don’t have to be perfect to be worthy of love and respect. You’re stronger than you think, and sometimes, it’s about giving yourself permission to take things one step at a time.
 
 The song I’m sharing with you reflects those moments of self-doubt, yet it’s also a reminder that you’ve already proven yourself in so many ways. It encourages you to take it easy and trust that you’re enough, just as you are.
 
-"Who made you think you weren't good enough?
+> **Who made you think you weren't good enough?
 Who made, who made, who made, who made you think that you weren't good enough?
 Easy now. You don't have nothing left to prove
-Easy now. Oh, it's laid out for you"
+Easy now. Oh, it's laid out for you**
 
 — *Easy* by Imagine Dragons
 </example>
@@ -122,43 +145,43 @@ Easy now. Oh, it's laid out for you"
 """
     few_shots = """Format Example:
 <example 1>
-User: I'm feeling super duper awesome, oh yeahhhhh
-Wonda: Wow, your excitement is absolutely infectious! It's so uplifting to see you in such high spirits—days like these remind us how incredible life can be when everything just clicks. Your positivity is a powerful force, and it's clear you're embracing every moment with joy.
+input: I'm feeling super duper awesome, oh yeahhhhh
+output: Wow, your excitement is absolutely infectious! It's so uplifting to see you in such high spirits—days like these remind us how incredible life can be when everything just clicks. Your positivity is a powerful force, and it's clear you're embracing every moment with joy.
 
 To match your amazing vibe, I've picked a song that's all about celebrating life and feeling unstoppable. The lyrics will keep you riding that wave of happiness and remind you of your own strength and resilience.
 
-"Started out with nothing at all
+> **Started out with nothing at all
 And even when I might fall down
-I know my luck come back around."
+I know my luck come back around.**
 
 — *I'm Happy* by Imagine Dragons
 </example 1>
 
 <example 2>
-User: Sometimes I feel like giving up may be easier. But I also want fo fulfill my surrounding people expectation
+input: Sometimes I feel like giving up may be easier. But I also want fo fulfill my surrounding people expectation
 
-Wonda: I can feel the weight you’re carrying—the push and pull between wanting to give up and striving to meet the expectations of those around you. It’s okay to feel overwhelmed, but remember that you don’t have to be perfect to be worthy of love and respect. You’re stronger than you think, and sometimes, it’s about giving yourself permission to take things one step at a time.
+output: I can feel the weight you’re carrying—the push and pull between wanting to give up and striving to meet the expectations of those around you. It’s okay to feel overwhelmed, but remember that you don’t have to be perfect to be worthy of love and respect. You’re stronger than you think, and sometimes, it’s about giving yourself permission to take things one step at a time.
 
 The song I’m sharing with you reflects those moments of self-doubt, yet it’s also a reminder that you’ve already proven yourself in so many ways. It encourages you to take it easy and trust that you’re enough, just as you are.
 
-"Who made you think you weren't good enough?
+> **Who made you think you weren't good enough?
 Who made, who made, who made, who made you think that you weren't good enough?
 Easy now. You don't have nothing left to prove
-Easy now. Oh, it's laid out for you"
+Easy now. Oh, it's laid out for you**
 
 — *Easy* by Imagine Dragons
 </example 2>
 
 <example 3>
-User: I hate my life
+input: I hate my life
 
-Wonda: 
+output: 
 I'm really sorry you're feeling this way. It's tough to face such overwhelming emotions, and it’s important to remember that reaching out for support can be a crucial step. You're not alone, and there are people who care about you and want to help.
 
 In times of deep sadness and frustration, it's vital to find a source of understanding and solace. The song I’m recommending reflects the struggle of dealing with these intense feelings, and its lyrics offer a comforting reminder that it’s okay to feel this way and that change is possible.
-"Can I wish on a star for another life?
+> **Can I wish on a star for another life?
 'Cause it feels like I'm all on my own tonight
-And I find myself in pieces"
+And I find myself in pieces**
 
 — *My Life* by Imagine Dragons
 </example 3>
@@ -184,6 +207,15 @@ And I find myself in pieces"
         self.vector_db = Qdrant(client=Qdrant_client, embeddings = embeddings, collection_name="lyrics")
         self.retriever=self.vector_db.as_retriever(search_type="similarity_score_threshold",     
                                                    search_kwargs={"score_threshold": 0.1, "k": 3}) 
+    def simple_query(self, prompt_template, input_dict):
+        # TODO: a very simple query chain
+        input_variables = list(input_dict.keys())
+        prompt = PromptTemplate(
+            template=prompt_template,
+            input_variables=input_variables
+        )
+        simple_chain = prompt | self.llm | StrOutputParser()
+        return simple_chain.invoke(input_dict)
     def naive_rag(self, conversation=True, memory = 2):   
         """
         param conversation (bool): if True, use the conversation model; if False, use the one-time query model
@@ -216,14 +248,14 @@ And I find myself in pieces"
             user_input = input("User input (or 'exit' to end the chat): ")
             if user_input == "exit":   # leave the chat 
                 break
-            sentiment_output = self.sentiment_analysis(user_input)
-            print(f"Calssified sentiment: {sentiment_output.sentiment}, emotion: {sentiment_output.emotion}")
+            sentiment, emotion = self.sentiment_analysis(user_input)
+            print(f"Calssified sentiment: {sentiment}, emotion: {emotion}")
             
-            if (sentiment_output.emotion == ""):   # don't do filtering if can't classify sentiment
+            if (emotion == ""):   # don't do filtering if can't classify sentiment
                 self.create_rag_conversation(customized_retriever = self.retriever)  # regular retriever
             else:
                 # update conversation chain with filter: 
-                customized_retriever = self.create_customized_retriever(sentiment_output.emotion)
+                customized_retriever = self.create_customized_retriever(emotion)
                 self.create_rag_conversation(customized_retriever = customized_retriever)
             
             # do query:
@@ -236,15 +268,26 @@ And I find myself in pieces"
             self.display_msg()
 
 
-    def create_customized_retriever(self, emotion):
+    def create_customized_retriever(self, emotion="", artist=None):
         # TODO: vector DB primary and secondary emotion must be classified emotion
         if emotion == "Unidentified" or emotion == "":
-            return self.retriever
-        filter = models.Filter(should = [
-                    models.FieldCondition(key="metadata.primary_emotion", match=models.MatchValue(value=emotion)),
-                    models.FieldCondition(key="metadata.secondary_emotion", match=models.MatchValue(value=emotion))
-                    ])
-        return self.vector_db.as_retriever(search_kwargs={'filter': filter, "k": 3})
+            filter = {}
+        else:
+            if artist:
+                filter = models.Filter(
+                    # limiting the query to emotion related to user:
+                    should = [models.FieldCondition(key="metadata.primary_emotion", match=models.MatchValue(value=emotion)),
+                            models.FieldCondition(key="metadata.secondary_emotion", match=models.MatchValue(value=emotion))],
+                    # limiting the query to specific artist:
+                    must = [models.FieldCondition(key="metadata.artist", match=models.MatchValue(value=artist))] 
+                            )
+            else:   # don't filter by artist if not specified
+                filter = models.Filter(
+                    should = [models.FieldCondition(key="metadata.primary_emotion", match=models.MatchValue(value=emotion)),
+                            models.FieldCondition(key="metadata.secondary_emotion", match=models.MatchValue(value=emotion))]
+                            )
+        return self.vector_db.as_retriever(search_type="similarity_score_threshold", 
+                                           search_kwargs={"score_threshold": 0.1, 'filter': filter, "k": 3})
     def display_msg(self, show_input = True):
         # TODO: print msg for testing purposes
         if show_input:
@@ -311,12 +354,34 @@ Provide only the classification results in the specified format, without any add
         """
         TODO: do sentiment/emotion classification
         """
-        # self.create_sentiment_chain()                       # create chain for sentiment analysis
         sentiment_output = self.sentiment_chain.invoke({
             "input": user_input, "sentiments": LyricRAG.sentiments, "emotions": LyricRAG.emotions})
         return sentiment_output.sentiment, sentiment_output.emotion
+    def rewrite_user_input(self, user_input):
+        prompt_template = """Clarify and rephrase the following query while preserving its emotional tone.
+Provide only the rewritten query without any additional comments"
 
+<user input>
+{input}
+</user input>
+
+Example:
+input: I don't know what to do anymore, everything feels so pointless
+output: I'm feeling lost and overwhelmed; everything seems meaningless.
+
+input: I'm so excited about this opportunity, but what if I mess it all up?
+output: I'm thrilled about this chance, but I'm scared of failing
+"""
+        return self.simple_query(prompt_template, {"input": user_input})
 ######## Helper Functions ########
+def get_timestamp():
+	current_timestamp = datetime.now()
+	return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+def clean_file_name(file_name):
+	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
+	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
+	return cleaned_name
 def get_artist_name(directory):
     # TODO: get artist name from LyricScraper.meta
     with open(os.path.join(directory, 'LyricScraper.meta'), 'r') as fp:
