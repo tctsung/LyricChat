@@ -1,6 +1,6 @@
 <img src="data/readme/friendly_chatbot_b.jpg" width="300">
 
-# LyricChat Overview            
+# Overview            
 Aims to create an AI chatbot that connects with users emotionally and recommends a song that matches their current mood.
 
 ### ChatBot workflow
@@ -8,10 +8,9 @@ Aims to create an AI chatbot that connects with users emotionally and recommends
 <img src="data/readme/query_workflow.png" width="1080">
 
 ### Demo video
-
 * version: 0.1.0
 
-https://github.com/user-attachments/assets/43a7fd44-5a54-4fc2-bce6-8e726cc33ea3
+https://github.com/user-attachments/assets/2c7de861-12c7-4212-92bf-3dac30741492
 
 # Environment
 
