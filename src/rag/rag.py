@@ -151,7 +151,7 @@ The song I’m sharing with you reflects those moments of self-doubt, yet it’s
 Who made, who made, who made, who made you think that you weren't good enough?
 Easy now. You don't have nothing left to prove
 Easy now. Oh, it's laid out for you**
-
+\n
 — *Easy* by Imagine Dragons
 </example>
     
@@ -213,7 +213,7 @@ And I find myself in pieces**
 
     def load_model(self):
         num_ctx = 8192 if 'llama' in self.model else 4096   # mistral only take 4096 as max context length
-        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.35, url = self.url_model, num_ctx=num_ctx)
+        self.llm = ChatOllama(model = self.model, keep_alive = -1, temperature = 0.5, url = self.url_model, num_ctx=num_ctx)
     def load_db(self):
         Qdrant_client = QdrantClient(url=self.url_db)
         embeddings = FastEmbedEmbeddings(model_name = CreateDB.embed_model)

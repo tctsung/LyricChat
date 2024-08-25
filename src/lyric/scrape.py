@@ -18,6 +18,10 @@ ENV_VAR = dotenv_values(".env")
 Genius_key = ENV_VAR['Genius_key']
 
 # Run this code in the git repo with: `python src/lyric_scrapping/scrape.py`
+# TODO: separate lyrics scrapping & preprocessing into 2 OOP
+# lyrics_raw: must be exact raw data (better for troubleshooting);  <artist>_<song title>: <lyrics>
+# add a OOP for github lyric-database
+
 def main():
     # set parameters:
     artist_name = "Post Malone"
@@ -201,6 +205,15 @@ class LyricScraper:
                 self.processed_dict.pop(title)
         if len(self.highly_similar_songs) > 0:
             logging.warning("%d songs were removed due to similar lyrics", len(self.highly_similar_songs))
+    def drop_duplicates(self):
+        """
+        TODO: helper: drop the exact same lyric chunks
+        """
+        for title, lyric in self.processed_dict.copy().items():
+            seen = set()
+            lyric_chunk = lyric.split("\n\n")
+            lyric_no_dup = "\n\n".join([x for x in lyric_chunk if not (x in seen or seen.add(x))])
+            self.processed_dict[title] = lyric_no_dup
     def create_metadata(self):
         # TODO: create metadata for the scraped lyrics
         self.end_time = get_timestamp()
