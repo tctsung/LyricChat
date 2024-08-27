@@ -2,7 +2,7 @@ import lyricsgenius
 from difflib import SequenceMatcher as sm
 import pandas as pd
 import numpy as np
-import helper
+import sys
 import logging
 import os
 import contextlib
@@ -12,44 +12,109 @@ import re
 import pickle
 from datetime import datetime
 
+# set working directory to LyricChat repo root
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+os.chdir('../..')     
+
+# load helper functions:
+import sys
+sys.path.append("src/")     
+from helper import *
+
 # get secret tokens:
 from dotenv import dotenv_values
 ENV_VAR = dotenv_values(".env")
-Genius_key = ENV_VAR['Genius_key']
+
 
 # Run this code in the git repo with: `python src/lyric_scrapping/scrape.py`
 # TODO: separate lyrics scrapping & preprocessing into 2 OOP
 # lyrics_raw: must be exact raw data (better for troubleshooting);  <artist>_<song title>: <lyrics>
 # add a OOP for github lyric-database
 
-def main():
-    # set parameters:
-    artist_name = "Post Malone"
-    sort_method = "title"
-    max_songs = 500
-    irrelevant_words = [r"See Post Malone LiveGet tickets as low as \$\d+"]
-    logging_level = 'INFO'
+# syntax: python scrape.py <scrape_type> <artist> <max_song>
+# eg. python src/lyric_scrapping/scrape.py genius "Imagine Dragons" 10
+def main():        
+    # collect system args:
+    if len(sys.argv) != 4:
+        raise ValueError("Usage: python scrape.py <scrape_type> <artist_name> <max_songs>")
 
-    # process scraping:
-    set_loggings(level=logging_level, func_name="LyricScraper")
-    logging.info("Start scraping %d songs for %s", max_songs, artist_name)
-    scraper = LyricScraper(artist_name, max_songs=max_songs, sort_method=sort_method, 
-                           irrelevant_words=irrelevant_words, save=True)
+    scrape_type, artist_name, max_songs = sys.argv[1:4]
+    assert scrape_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"
+    assert (max_songs.isdigit()) and (int(max_songs)>0), "Maximum number of songs must be an integer"
 
-def load_LyricScraper(file_path):
-    assert file_path.endswith(".pkl"), "file_path must end with .pkl"
-    with open(file_path, "rb") as f:
-        lyric_scraper = pickle.load(f)
-    return lyric_scraper
+    # do scraping:
+    if scrape_type == "genius":
+        Genius_key = ENV_VAR['Genius_key']   # load Genius API key from .env file
+        set_loggings(level="info", func_name="Genius song Scraper")
+        genius_scraper = GeniusScraper(artist_name, max_songs=int(max_songs), Genius_key=Genius_key)
+        lyrics_raw = genius_scraper.raw_dict
+    else:  # scrape_type == "open-lyrics":
+        set_loggings(level="info", func_name="Open-Lyrics Scraper")
 
-class LyricScraper:
+class GeniusScraper:
+    def __init__(self, artist_name, max_songs, Genius_key, retry_times=10, save=True):
+        """
+        TODO: scrape lyrics of a specific artist from Genius API
+        param artist_name (str): name of the artist
+        param max_songs (int): maximum number of songs to scrape
+        param sort_method (str): sort method of the songs
+        """
+        # set params:
+        self.artist_name = artist_name
+        self.max_songs = max_songs
+        self.Genius_key = Genius_key
+        self.retry_times = retry_times
+        self.start_time = datetime.now()
+        self.scrape_songs()   # scrape songs
+        if save: 
+            self.save(directory = "data\lyrics")
+        logging.info("Total time taken: %s\nTotal songs scraped: %s\nFile saved to: %s", 
+                     format_timedelta(datetime.now() - self.start_time), 
+                     len(self.raw_dict),
+                     self.save_path
+                     )
+    def scrape_songs(self):
+        # TODO: scrape lyrics from Genius API
+        # collect required args:
+        genius = lyricsgenius.Genius(self.Genius_key)   # global variable
+        with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):  # suppress stdout
+            artist_id = genius.search_artist(self.artist_name, max_songs=0, include_features=False).id 
+    
+        # scrape songs:
+        while True:       # if failed due to internal error, retry
+            try:
+                artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort="title")
+                break
+            except:
+                if self.retry_times == 0:    # stop if no more retries
+                    logging.error("Failed to scrape songs. Maximum retry times reached.")
+                    exit()
+                logging.warning("Failed to scrape songs. Retrying...")
+                self.retry_times -= 1
+                time.sleep(3)
+                continue
+        # save info:
+        self.artist = artist
+        self.raw_dict = {song.title: song.lyrics for song in artist.songs}
+    
+    def save(self, directory):
+        # TODO: save lyrics as json
+        subfolder = clean_file_name(f"{self.artist_name} {get_timestamp()}")
+        self.save_directory = os.path.join(directory, subfolder)
+        os.makedirs(self.save_directory, exist_ok=True)
+        self.save_path = os.path.join(self.save_directory, 'lyrics_raw.json')
+        with open(self.save_path, 'w') as fp:
+            json.dump(self.raw_dict, fp, indent=4)
+
+
+class LyricProcessor:
     # commonly seen irrelevant words in Genius lyrics:
     default_irrelevant_words = [
         r"You might also like",
         r"\d*Embed$"
     ]
-    def __init__(self, artist_name, max_songs, sort_method="title", 
-                 irrelevant_words=[], filter_songs=True, similarity_threshold=0.6,
+    def __init__(self, artist_name, max_songs, sort_method="title", irrelevant_words=[], filter_songs=True, similarity_threshold=0.6,
                  retry_times=10, save=True):
         """
         TODO: scrape lyrics of a specific artist from Genius API
@@ -84,7 +149,8 @@ class LyricScraper:
             self.removed_similar_songs(threshold=similarity_threshold)
         
         # save files:
-        if save: self.save()
+        if save: 
+            self.save(directory = "data\lyrics")
         
     def scrape_songs(self):
         # TODO: scrape lyrics from Genius API
@@ -254,54 +320,6 @@ def is_valid_song(title):
     # TODO: check if the title is valid
     excluded_terms = ["(acoustic", "[acoustic", "remix)", "remix]", "(demo", "[demo", "[live", "(live", "session)", "session]", "version)", "version]"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
-def set_loggings(level=logging.INFO, func_name=''):
-	"""
-	TODO: set logging levels
-	"""
-	if isinstance(level, str):
-		log_levels = {
-			'DEBUG': logging.DEBUG,
-			'INFO': logging.INFO,
-			'WARNING': logging.WARNING,
-			'ERROR': logging.ERROR,
-			'CRITICAL': logging.CRITICAL
-		}
-		level = log_levels[level]
-	# Remove all handlers associated with the root logger object:
-	for handler in logging.root.handlers[:]:
-		logging.root.removeHandler(handler)
-	logging.basicConfig(
-		level=level,                              # set logging level
-		format='----- %(levelname)s (%(asctime)s) ----- \n%(message)s\n')	 # set messsage format
-	logging.critical(
-		'Hello %s, The current logging level is: %s', 
-		func_name,
-		logging.getLevelName(logging.getLogger().getEffectiveLevel()))
-
-def get_timestamp():
-	current_timestamp = datetime.now()
-	return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
-
-def clean_file_name(file_name):
-	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
-	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
-	return cleaned_name
-
-def find_files(directory_path = ".", file_extension=".json"):
-	# TODO: find all files in a directory with specific file extension
-    file_paths = []
-    
-    for root, dirs, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith(file_extension):
-                file_paths.append(os.path.join(root, file))
-    
-    return file_paths
-## Suppress stdout:
-# import os
-# import contextlib
-# with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
-#     "Your code..."
 #### End of helper functions ####
 
 if __name__ == '__main__':

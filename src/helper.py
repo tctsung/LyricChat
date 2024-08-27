@@ -1,13 +1,14 @@
 import logging
 from datetime import datetime
 import os
-
+import re
 
 def set_loggings(level=logging.INFO, func_name=''):
 	"""
 	TODO: set logging levels
 	"""
 	if isinstance(level, str):
+		level = level.upper()
 		log_levels = {
 			'DEBUG': logging.DEBUG,
 			'INFO': logging.INFO,
@@ -38,3 +39,28 @@ def get_artist_name(path):
         for line in fp:
             if line.startswith('Artist name: '):
                 return line.split(':')[1].strip()
+def clean_file_name(file_name):
+	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
+	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
+	return cleaned_name
+def find_files(directory_path = ".", file_extension=".json"):
+	# TODO: find all files in a directory with specific file extension
+    file_paths = []
+    
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(file_extension):
+                file_paths.append(os.path.join(root, file))
+    return file_paths
+def format_timedelta(td):
+    # Ensure we're working with a positive timedelta
+    td = abs(td)
+    # Extract hours, minutes, and seconds
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d} hr {minutes:02d} min {seconds:02d} sec"
+## Suppress stdout:
+# import os
+# import contextlib
+# with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+#     "Your code..."
