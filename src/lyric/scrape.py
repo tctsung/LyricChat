@@ -36,21 +36,11 @@ ENV_VAR = dotenv_values(".env")
 # eg. python src/lyric_scrapping/scrape.py genius "Imagine Dragons" 10
 def main():        
     # collect system args:
-    if len(sys.argv) != 4:
-        raise ValueError("Usage: python scrape.py <scrape_type> <artist_name> <max_songs>")
+    set_loggings(level="info", func_name="Hello Lyric Scraper!")
 
-    scrape_type, artist_name, max_songs = sys.argv[1:4]
-    assert scrape_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"
-    assert (max_songs.isdigit()) and (int(max_songs)>0), "Maximum number of songs must be an integer"
-
-    # do scraping:
-    if scrape_type == "genius":
-        Genius_key = ENV_VAR['Genius_key']   # load Genius API key from .env file
-        set_loggings(level="info", func_name="Genius song Scraper")
-        genius_scraper = GeniusScraper(artist_name, max_songs=int(max_songs), Genius_key=Genius_key)
-        lyrics_raw = genius_scraper.raw_dict
-    else:  # scrape_type == "open-lyrics":
-        set_loggings(level="info", func_name="Open-Lyrics Scraper")
+class OpenLyricsScraper:
+    def __init__(self):
+        pass
 
 class GeniusScraper:
     def __init__(self, artist_name, max_songs, Genius_key, retry_times=10, save=True):
@@ -68,8 +58,8 @@ class GeniusScraper:
         self.start_time = datetime.now()
         self.scrape_songs()   # scrape songs
         if save: 
-            self.save(directory = "data\lyrics")
-        logging.info("Total time taken: %s\nTotal songs scraped: %s\nFile saved to: %s", 
+            self.save()
+        logging.info("Total time taken: %s\nTotal songs scraped: %s\nScraped lyrics saved to: %s", 
                      format_timedelta(datetime.now() - self.start_time), 
                      len(self.raw_dict),
                      self.save_path
@@ -98,87 +88,76 @@ class GeniusScraper:
         self.artist = artist
         self.raw_dict = {song.title: song.lyrics for song in artist.songs}
     
-    def save(self, directory):
+    def save(self, directory = "data/genius"):
         # TODO: save lyrics as json
         subfolder = clean_file_name(f"{self.artist_name} {get_timestamp()}")
         self.save_directory = os.path.join(directory, subfolder)
         os.makedirs(self.save_directory, exist_ok=True)
         self.save_path = os.path.join(self.save_directory, 'lyrics_raw.json')
-        with open(self.save_path, 'w') as fp:
+        with open(self.save_path, 'w', encoding='utf-8') as fp:
             json.dump(self.raw_dict, fp, indent=4)
 
-
 class LyricProcessor:
-    # commonly seen irrelevant words in Genius lyrics:
+    # commonly seen irrelevant words/commercials in Genius.com:
     default_irrelevant_words = [
         r"You might also like",
-        r"\d*Embed$"
+        r"\d*Embed$",
+        r"See .+ Live",
+        r"Get tickets as low as \$\d+"
     ]
-    def __init__(self, artist_name, max_songs, sort_method="title", irrelevant_words=[], filter_songs=True, similarity_threshold=0.6,
-                 retry_times=10, save=True):
+    def __init__(self, json_path, scrape_type, check_invalid_title=True, check_word_cnt=True, check_lyric_similarity=True, similarity_threshold=0.6, irrelevant_words=[]):
         """
         TODO: scrape lyrics of a specific artist from Genius API
-        param artist_name (str): name of the artist
+        param json_path (str | dict): json output of GeniusScraper or OpenLyricsScraper
         param max_songs (int): maximum number of songs to scrape
         param sort_method (str): sort method of the songs
         param check_similar_songs (bool): whether to remove songs with similar lyrics, the shortest song name will be kept
         param threshold (float): threshold of similarity
         """
+        assert scrape_type in ["genius", "open-lyrics"], "scrape_type must be 'genius' or 'open-lyrics'"
         # set params:
-        self.artist_name = artist_name
-        self.max_songs = max_songs
-        self.sort_method = sort_method
-        self.irrelevant_words = LyricScraper.default_irrelevant_words
-        self.retry_times = retry_times
+        self.irrelevant_words = LyricProcessor.default_irrelevant_words
         if len(irrelevant_words) > 0:
             self.irrelevant_words.extend(irrelevant_words)
-
+        # read input data:
+        if isinstance(json_path, dict):
+            self.lyrics_raw = json_path
+        elif isinstance(json_path, str):
+            assert json_path.endswith(".json"), "json_path must be a .json file."
+            with open(json_path, 'r') as f:
+                self.lyrics_raw = json.load(f)
+        else:
+            raise TypeError("json_path must be a .json file or a dict.")
         # set buffers:
         self.removed_songs = []
         self.invalid_songs = []
         self.highly_similar_songs = []
         self.inadquate_len_songs = []
-
+        self.applied_filters = []
         # process scraping:
         self.start_time = get_timestamp()
-        self.scrape_songs()
-        self.preprocess()
-        if filter_songs:
+        if scrape_type == "genius":
+            self.preprocess_genius()
+        elif scrape_type == "open-lyrics":
+            self.preprocess_open_lyrics()
+
+        # do filtering:
+        if check_invalid_title:
+            self.applied_filters.append("removed_invalid_titles")
             self.removed_invalid_titles()
+        if check_word_cnt:
+            self.applied_filters.append("removed_inadequate_word_cnt")
             self.removed_inadequate_word_cnt()
+        if check_lyric_similarity:
+            self.applied_filters.append("removed_highly_similar_songs with threshold" + str(similarity_threshold))
             self.removed_similar_songs(threshold=similarity_threshold)
         
-        # save files:
-        if save: 
-            self.save(directory = "data\lyrics")
-        
-    def scrape_songs(self):
-        # TODO: scrape lyrics from Genius API
-        # collect required args:
-        genius = lyricsgenius.Genius(Genius_key)   # global variable
-        with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
-            artist_id = genius.search_artist(self.artist_name, max_songs=0, include_features=False).id 
-    
-        # scrape songs:
-        while True:       # if failed due to internal error, retry
-            try:
-                artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort=self.sort_method)
-                break
-            except:
-                if self.retry_times == 0:    # stop if no more retries
-                    logging.error("Failed to scrape songs. Maximum retry times reached.")
-                    exit()
-                logging.warning("Failed to scrape songs. Retrying...")
-                self.retry_times -= 1
-                time.sleep(3)
-                continue
-        # save info:
-        self.artist = artist
-        self.raw_dict = {song.title: song.lyrics for song in artist.songs}
-    def preprocess(self):
+        # create output files:
+        self.create_metadata()
+    def preprocess_genius(self):
         # TODO: preprocess the lyrics
-        processed_dict = {}
-        for title, lyric in self.raw_dict.items():
+        lyrics_processed = {}
+        for title, lyric in self.lyrics_raw.items():
             # split by "Lyrics", and remove the first part (Contributors & song name)
             lyric_process = lyric.split("Lyrics")[1:]
             lyric_process = "".join(lyric_process)
@@ -191,29 +170,32 @@ class LyricProcessor:
             irrelevant_regex = re.compile(irrelevant_merge)
             lyric_process = re.sub(irrelevant_regex, '', lyric_process)
 
-            # turn multiple new lines into single new line to split chunks:
+            # turn multiple new lines into double new line to split chunks:
             lyric_process = re.sub(r'\n\n\n+', '\n\n', lyric_process)
 
             # remove leading and trailing spaces:
             lyric_process = lyric_process.strip()
-            
+
+            # remove duplicated chunks:
+            lyric_process = drop_duplicates(lyric_process)
+
             # save processed lyrics:
-            processed_dict[title] = lyric_process
-        self.processed_dict = processed_dict
+            lyrics_processed[title] = lyric_process
+        self.lyrics_processed = lyrics_processed
     def removed_invalid_titles(self):
-        # TODO: remove invalid titles from processed_dict
-        for title in self.processed_dict.copy().keys():
+        # TODO: remove invalid titles from lyrics_processed
+        for title in self.lyrics_processed.copy().keys():
             if not is_valid_song(title):
-                self.processed_dict.pop(title)
+                self.lyrics_processed.pop(title)
                 self.invalid_songs.append(title)
                 self.removed_songs.append(title)
         if len(self.invalid_songs) > 0:
             logging.warning("%d songs were removed due to invalid title", len(self.invalid_songs))
     def removed_inadequate_word_cnt(self, min_word_cnt=30):
         # TODO: remove songs with inadequate word count since that might not be lyrics
-        for title, lyric in self.processed_dict.copy().items():
+        for title, lyric in self.lyrics_processed.copy().items():
             if len(lyric.split()) < min_word_cnt:
-                self.processed_dict.pop(title)
+                self.lyrics_processed.pop(title)
                 self.inadquate_len_songs.append(title)
                 self.removed_songs.append(title)
         if len(self.inadquate_len_songs) > 0:
@@ -222,10 +204,7 @@ class LyricProcessor:
     def check_similarity(self, threshold=0.6, do_raw=False):
         # TODO: calculate the similarity based on longest contiguous matching subsequence (LCS) algorithm
         # This is a helper function for removed_similar_songs()
-        if do_raw:  # use all songs to calculate similarity
-            lyric_dict = self.raw_dict
-        else:
-            lyric_dict = self.processed_dict
+        lyric_dict = self.lyrics_processed
         titles = []
         lyrics = []
         for title, lyric in lyric_dict.items():
@@ -264,62 +243,57 @@ class LyricProcessor:
         highly_similar_songs = set(highly_similar_songs)
         
         # remove similar songs:
-        for title in self.processed_dict.copy().keys():
+        for title in self.lyrics_processed.copy().keys():
             if title in highly_similar_songs:
                 self.removed_songs.append(title)
                 self.highly_similar_songs.append(title)
-                self.processed_dict.pop(title)
+                self.lyrics_processed.pop(title)
         if len(self.highly_similar_songs) > 0:
             logging.warning("%d songs were removed due to similar lyrics", len(self.highly_similar_songs))
-    def drop_duplicates(self):
-        """
-        TODO: helper: drop the exact same lyric chunks
-        """
-        for title, lyric in self.processed_dict.copy().items():
-            seen = set()
-            lyric_chunk = lyric.split("\n\n")
-            lyric_no_dup = "\n\n".join([x for x in lyric_chunk if not (x in seen or seen.add(x))])
-            self.processed_dict[title] = lyric_no_dup
     def create_metadata(self):
         # TODO: create metadata for the scraped lyrics
         self.end_time = get_timestamp()
-        return f"""Start time: {self.start_time}
+        self.metadata = f"""Start time: {self.start_time}
 End time: {self.end_time}
-Artist name: {self.artist_name}
-Saved to: {self.save_directory}
-OOP object: LyricScraper.pickle
-Total # of Songs scraped: {len(self.raw_dict)} (see lyrics_raw.json for more info)
-Total # of filtered Songs: {len(self.processed_dict)} (see lyrics_filter.json for more info)
-Removed due to invalid title: {len(self.invalid_songs)} (see LyricScraper.invalid_songs for more info)
-Removed due to inadequate word count: {len(self.inadquate_len_songs)} (see LyricScraper.inadquate_len_songs for more info)
-Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricScraper.highly_similar_songs for more info)
+Total # of input songs: {len(self.lyrics_raw)}
+Total # of Processed Songs: {len(self.lyrics_processed)} (see lyrics_processed.json for more info)
+Applyed filters: {self.applied_filters}
+Removed due to invalid title: {len(self.invalid_songs)} (see LyricProcessor.invalid_songs for more info)
+Removed due to inadequate word count: {len(self.inadquate_len_songs)} (see LyricProcessor.inadquate_len_songs for more info)
+Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricProcessor.highly_similar_songs for more info)
 """
-    def save(self, directory = "data\lyrics"):
+    def save(self, directory):
         # TODO: save the lyrics, OOP object, and metadata to specified directory
-        subfolder = clean_file_name(f"{self.artist_name} {self.start_time}") 
-        self.save_directory = os.path.join(directory, subfolder)
-        os.makedirs(self.save_directory, exist_ok=True)
+        # param directory (str): the directory to save files to, recommend use the same directory as GeniusScraper/OpenLyricsScraper
         
-        # save raw_dict to json:
-        with open(os.path.join(self.save_directory, 'lyrics_raw.json'), 'w') as fp:
-            json.dump(self.raw_dict, fp, indent=4)
-        # save processed_dict to json:
-        with open(os.path.join(self.save_directory, 'lyrics_filter.json'), 'w') as fp:
-            json.dump(self.processed_dict, fp, indent=4)
-        # save metadata to LyricScraper.meta:
-        with open(os.path.join(self.save_directory, 'LyricScraper.meta'), 'w') as fp:
-            fp.write(self.create_metadata())
+        # create directory if it doesn't exist
+        os.makedirs(directory, exist_ok=True)
+
+        # save lyrics_processed to json:
+        with open(os.path.join(directory, 'lyrics_processed.json'), 'w', encoding='utf-8') as fp:
+            json.dump(self.lyrics_processed, fp, indent=4)
+        # save metadata to LyricProcessor.meta:
+        with open(os.path.join(directory, 'LyricProcessor.meta'), 'w') as fp:
+            fp.write(self.metadata)
         # save the OOP itself as pickle:
-        with open(os.path.join(self.save_directory, 'LyricScraper.pickle'), 'wb') as f:
+        with open(os.path.join(directory, 'LyricProcessor.pickle'), 'wb') as f:
             pickle.dump(self, f)
 
-        logging.info("Files saved to %s, see LyricScraper.meta for more info", self.save_directory)
+        logging.info("Files saved to %s, see LyricProcessor.meta for more info", directory)
 
 #### helper functions ####
 def is_valid_song(title):
     # TODO: check if the title is valid
     excluded_terms = ["(acoustic", "[acoustic", "remix)", "remix]", "(demo", "[demo", "[live", "(live", "session)", "session]", "version)", "version]"]  
     return not any(term.lower() in title.lower() for term in excluded_terms)
+def drop_duplicates(lyric):
+    """
+    TODO: drop the exact same lyric chunks
+    """
+    seen = set()
+    lyric_chunk = lyric.split("\n\n")
+    lyric_no_dup = "\n\n".join([x for x in lyric_chunk if not (x in seen or seen.add(x))])
+    return lyric_no_dup
 #### End of helper functions ####
 
 if __name__ == '__main__':
