@@ -41,6 +41,7 @@ def main():
 class OpenLyricsScraper:
     def __init__(self):
         pass
+        # format of key: <artist>|||<song title>|||<scraped order>
 
 class GeniusScraper:
     def __init__(self, artist_name, max_songs, Genius_key, retry_times=10, save=True):
@@ -84,9 +85,12 @@ class GeniusScraper:
                 self.retry_times -= 1
                 time.sleep(3)
                 continue
+        # update artist name by more standardized Genius renaming
+        self.artist_name = artist.name
         # save info:
         self.artist = artist
-        self.raw_dict = {song.title: song.lyrics for song in artist.songs}
+        # unique KEY: <artist>_<song title>_<scraped order>: <lyrics>
+        self.raw_dict = {(self.artist_name+'|||'+song.title + '|||' + str(i)): song.lyrics for i, song in enumerate(artist.songs)}
     
     def save(self, directory = "data/genius"):
         # TODO: save lyrics as json
@@ -152,8 +156,39 @@ class LyricProcessor:
             self.applied_filters.append("removed_highly_similar_songs with threshold" + str(similarity_threshold))
             self.removed_similar_songs(threshold=similarity_threshold)
         
+        # split to child chunks (for small2big retrieval):
+        self.split_to_chunks()
         # create output files:
         self.create_metadata()
+    
+    def split_to_chunks(self):
+        # TODO: split lyrics into child chunks
+        lyrics_chunks = {}
+        for key, lyrics in self.lyrics_processed.items():
+            key_split = key.split("|||")     # <artist>|||<song title>|||<scraped order>
+            artist_name, song_title = key_split[0], key_split[1]   
+            chunks = lyrics.split('\n\n')   # split parent lyrics to child chunks
+            for idx, chunk in enumerate(chunks):
+                new_key = f"{key}|||{idx}"   # consistent delimiter
+                chunk_data = {
+                "artist_name": artist_name,
+                "song_title": song_title,
+                "lyrics": chunk,
+                "parent_id": key,
+                "chunk_order": idx
+                }
+                if idx == 0:                 # add artist name & song title to the first chunk for LLM to read
+                    chunk_data["lyrics"] = f"```\n<Artist name> {artist_name} <\Artist>\n<Song title> {song_title} <\Song title>\n<Lyric> \n{chunk}"
+                elif idx == len(chunks)-1:   # add delimiter to the last chunk
+                    chunk_data["lyrics"] = chunk_data['lyrics'] + "\n<\Lyric>```"
+                lyrics_chunks[new_key] = chunk_data    # save to new dict
+        self.lyrics_chunks = lyrics_chunks
+
+    def preprocess_open_lyrics(self):
+        # add this after implementing open-lyrics scraper
+        # note: remember to create unique key 
+        
+        pass
     def preprocess_genius(self):
         # TODO: preprocess the lyrics
         lyrics_processed = {}
@@ -200,7 +235,6 @@ class LyricProcessor:
                 self.removed_songs.append(title)
         if len(self.inadquate_len_songs) > 0:
             logging.warning("%d songs were removed due to inadequate word count", len(self.inadquate_len_songs))
-
     def check_similarity(self, threshold=0.6, do_raw=False):
         # TODO: calculate the similarity based on longest contiguous matching subsequence (LCS) algorithm
         # This is a helper function for removed_similar_songs()
@@ -257,6 +291,7 @@ class LyricProcessor:
 End time: {self.end_time}
 Total # of input songs: {len(self.lyrics_raw)}
 Total # of Processed Songs: {len(self.lyrics_processed)} (see lyrics_processed.json for more info)
+Total # of song chunks: {len(self.lyrics_chunks)} (see lyrics_processed.json for more info)
 Applyed filters: {self.applied_filters}
 Removed due to invalid title: {len(self.invalid_songs)} (see LyricProcessor.invalid_songs for more info)
 Removed due to inadequate word count: {len(self.inadquate_len_songs)} (see LyricProcessor.inadquate_len_songs for more info)
@@ -271,7 +306,7 @@ Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricProc
 
         # save lyrics_processed to json:
         with open(os.path.join(directory, 'lyrics_processed.json'), 'w', encoding='utf-8') as fp:
-            json.dump(self.lyrics_processed, fp, indent=4)
+            json.dump(self.lyrics_chunks, fp, indent=4)
         # save metadata to LyricProcessor.meta:
         with open(os.path.join(directory, 'LyricProcessor.meta'), 'w') as fp:
             fp.write(self.metadata)

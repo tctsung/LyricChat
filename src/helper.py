@@ -40,8 +40,15 @@ def get_artist_name(path):
             if line.startswith('Artist name: '):
                 return line.split(':')[1].strip()
 def clean_file_name(file_name):
+	# TODO: standardize file names
+	name_split = file_name.rsplit('.', 1)    # right split & max split is one
+	file_name = name_split[0]                # get file name without extension
+	# do processing:
 	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
 	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
+	# add file extension back
+	if len(name_split) > 1:
+		cleaned_name += '.' + name_split[1]   
 	return cleaned_name
 def find_files(directory_path = ".", file_extension=".json"):
 	# TODO: find all files in a directory with specific file extension
