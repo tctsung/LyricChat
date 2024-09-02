@@ -2,8 +2,11 @@ import os
 from dotenv import dotenv_values
 from huggingface_hub import login
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import json
+from transformers import pipeline
+import pandas as pd
+import numpy as np
 from datasets import Dataset
+from transformers.pipelines.pt_utils import KeyDataset
 from datetime import datetime
 
 # load helper functions:
@@ -20,7 +23,7 @@ ENV_VAR = dotenv_values(env_path)
 HF_key = ENV_VAR['HF_key']
 login(token=HF_key) 
 
-def load_HF_classification_model(model_id = "michellejieli/emotion_text_classifier"):
+def load_HF_classification_model(model_id = "SamLowe/roberta-base-go_emotions"):
     """
     TODO: save a HF classification model to local for emotion classification
     param model_id (str): HF model API id
@@ -43,7 +46,7 @@ class LoadGenius:
         self.list_latest_dirs()
         
         # iterate over the latest folders for feature engineering
-    def list_latest_dirs(self):
+    def list_latest_dirs(self, file_name = "lyrics_processed.parquet"):
         dirs = os.listdir(LoadGenius.input_directory)
         data = []
         # collect folder info:
@@ -57,30 +60,57 @@ class LoadGenius:
         for artist, timestamp, folder in data:
             if artist not in dct or timestamp > dct[artist][0]:
                 dct[artist] = (timestamp, folder)
-        self.latest_genius_dirs = {artist: os.path.join(LoadGenius.input_directory, latest_folder, "lyrics_processed.json") for artist, (timestamp, latest_folder) in dct.items()}
+        self.latest_genius_dirs = {artist: os.path.join(LoadGenius.input_directory, latest_folder, file_name) for artist, (timestamp, latest_folder) in dct.items()}
 
 class EmotionClassifier:
     # TODO: do emotion classification, no matter the source
-    def __init__(self, json_path, artist, model_path = 'models/HF/michellejieli_emotion_text_classifier', type="genius"):
+    def __init__(self, parquet_path, model_path = 'models/HF/SamLowe_roberta_base_go_emotions'):
         """
-        param json_path (str): path to the jsob file with format- <song title>: <lyrics>
-        param artist (str): name of the artist, this is provided because format of genius.com & lyric-database-master are different
-        return: lyrics_feature.json with format- <original key>: [emotion1, emotion2, emotion3, raw data]
+        param parquet_path (str): path to the parquet file with unique id & lyrics
+        param model_path (str): local path to the HF classification model, this is the output of load_HF_classification_model()
+        return: a new parquet & csv file with extra 3 cols: primary_emotion, secondary_emotion, classification_result
         """
-        self.json_path = json_path
-        self.artist = artist
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
+        # load data:
+        self.parquet_path = parquet_path
+        self.load_data()
+        # load model:
+        self.model_path = model_path
+        self.load_model()
+        # do emotion classification:
+        self.classification()
 
-    def load_dataset(self):
-        with open(os.path.join(dir, 'lyrics_filter.json'), 'r') as fp:
-            lyrics = json.load(fp)
-        dataset = Dataset.from_dict({"text": data})
-
-
+    def load_data(self):
+        self.df = pd.read_parquet(self.parquet_path)
+        # check colnames has "id" & "lyrics":
+        assert ("id" in self.df.columns) and ("lyrics" in self.df.columns), "Input data must have 'id' & 'lyrics' columns"
+        self.df['lyrics_clean'] = self.df['lyrics'].apply(clean_lyrics)
+        self.hf_dataset = Dataset.from_pandas(self.df[["id", "lyrics_clean"]])
+    def load_model(self, top_k=6, batch_size=4):
+        self.classifier = pipeline(model = self.model_path, task = "text-classification", 
+                      device_map="auto", top_k=top_k, batch_size=batch_size)
+    def classification(self):
+        classify_lst = []
+        classification_results = self.classifier(KeyDataset(self.hf_dataset, "lyrics_clean"), truncation='longest_first')
+        # organize results:
+        for classify_dct in classification_results:
+            clean_result = top_k_without_neutral(classify_dct, k=3)
+            classify_lst.append(clean_result)
+        # add results to dataframe:
+        df_classification = pd.DataFrame(classify_lst, columns=['primary_emotion', 'secondary_emotion', 'tertiary_emotion', 'classification_result'])
+        self.df = pd.concat([self.df, df_classification], axis=1)
 ## Helper functions:
 def clean_lyrics(lyrics):
     # TODO: remove metadat & delimiter from lyric chunks
     output = lyrics.replace("<\Lyric>```", "")     # for last idx
     output = output.split("<Lyric>")[-1].strip()   # for first idx
     return output
-
+def top_k_without_neutral(x, k=3):
+    # TODO: get top k classification results without neutral emotion
+    output = []
+    for classify_dct in x:
+        if classify_dct['label'] != 'neutral':
+            output.append(classify_dct['label'])
+        if len(output) == k:
+            output.append(str(x))
+            return output
+    
