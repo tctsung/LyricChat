@@ -10,24 +10,21 @@ import json
 import time
 import re
 import pickle
-from datetime import datetime
-
-# set working directory to LyricChat repo root
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
-os.chdir('../..')     
+from datetime import datetime 
 
 # load helper functions:
 import sys
-sys.path.append("src/")     
+script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(script_dir)
+sys.path.append(parent_dir)    # append src/ to sys.path to load helper.py     
 from helper import *
 
 # get secret tokens:
+env_path = os.path.join(os.path.dirname(parent_dir), ".env")  # load LyricChat/.env to env path
 from dotenv import dotenv_values
-ENV_VAR = dotenv_values(".env")
+ENV_VAR = dotenv_values(env_path)
 
-
-# Run this code in the git repo with: `python src/lyric_scrapping/scrape.py`
+# Run this code in the git repo with: `python src/scrape/scrape.py`
 # TODO: separate lyrics scrapping & preprocessing into 2 OOP
 # lyrics_raw: must be exact raw data (better for troubleshooting);  <artist>_<song title>: <lyrics>
 # add a OOP for github lyric-database
@@ -163,14 +160,15 @@ class LyricProcessor:
     
     def split_to_chunks(self):
         # TODO: split lyrics into child chunks
-        lyrics_chunks = {}
+        lyrics_chunks = []
         for key, lyrics in self.lyrics_processed.items():
             key_split = key.split("|||")     # <artist>|||<song title>|||<scraped order>
             artist_name, song_title = key_split[0], key_split[1]   
             chunks = lyrics.split('\n\n')   # split parent lyrics to child chunks
             for idx, chunk in enumerate(chunks):
-                new_key = f"{key}|||{idx}"   # consistent delimiter
+                new_key = f"{key}|||{idx}"   # new unique ID with consistent delimiter
                 chunk_data = {
+                "id": new_key,
                 "artist_name": artist_name,
                 "song_title": song_title,
                 "lyrics": chunk,
@@ -181,8 +179,8 @@ class LyricProcessor:
                     chunk_data["lyrics"] = f"```\n<Artist name> {artist_name} <\Artist>\n<Song title> {song_title} <\Song title>\n<Lyric> \n{chunk}"
                 elif idx == len(chunks)-1:   # add delimiter to the last chunk
                     chunk_data["lyrics"] = chunk_data['lyrics'] + "\n<\Lyric>```"
-                lyrics_chunks[new_key] = chunk_data    # save to new dict
-        self.lyrics_chunks = lyrics_chunks
+                lyrics_chunks.append(chunk_data)    # save to list
+        self.lyrics_chunks = pd.DataFrame(lyrics_chunks)
 
     def preprocess_open_lyrics(self):
         # add this after implementing open-lyrics scraper
@@ -291,7 +289,7 @@ class LyricProcessor:
 End time: {self.end_time}
 Total # of input songs: {len(self.lyrics_raw)}
 Total # of Processed Songs: {len(self.lyrics_processed)} (see lyrics_processed.json for more info)
-Total # of song chunks: {len(self.lyrics_chunks)} (see lyrics_processed.json for more info)
+Total # of song chunks: {self.lyrics_chunks.shape[0]} (see lyrics_processed.csv/parquet for more info)
 Applyed filters: {self.applied_filters}
 Removed due to invalid title: {len(self.invalid_songs)} (see LyricProcessor.invalid_songs for more info)
 Removed due to inadequate word count: {len(self.inadquate_len_songs)} (see LyricProcessor.inadquate_len_songs for more info)
@@ -304,9 +302,14 @@ Removed due to simialrity check: {len(self.highly_similar_songs)} (see LyricProc
         # create directory if it doesn't exist
         os.makedirs(directory, exist_ok=True)
 
+        # save lyrics_chunks to csv:
+        self.lyrics_chunks.to_csv(os.path.join(directory, 'lyrics_processed.csv'), index=False)
+        self.lyrics_chunks.to_parquet(os.path.join(directory, 'lyrics_processed.parquet'), index=False)
+        
         # save lyrics_processed to json:
-        with open(os.path.join(directory, 'lyrics_processed.json'), 'w', encoding='utf-8') as fp:
-            json.dump(self.lyrics_chunks, fp, indent=4)
+        with open(os.path.join(directory, 'lyrics_processed.json'), 'w') as fp:
+            json.dump(self.lyrics_processed, fp, indent=4)
+        
         # save metadata to LyricProcessor.meta:
         with open(os.path.join(directory, 'LyricProcessor.meta'), 'w') as fp:
             fp.write(self.metadata)

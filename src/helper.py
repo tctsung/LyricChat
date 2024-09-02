@@ -44,8 +44,8 @@ def clean_file_name(file_name):
 	name_split = file_name.rsplit('.', 1)    # right split & max split is one
 	file_name = name_split[0]                # get file name without extension
 	# do processing:
-	cleaned_name = re.sub(r'\s+', ' ', file_name.upper())
-	cleaned_name = re.sub(r'[\s:-]', '_', cleaned_name)
+	cleaned_name = re.sub(r'[\s:/\\-]', ' ', file_name)   # .upper()
+	cleaned_name = re.sub(r'\s+', '_', cleaned_name.strip())
 	# add file extension back
 	if len(name_split) > 1:
 		cleaned_name += '.' + name_split[1]   
