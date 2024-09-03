@@ -45,10 +45,9 @@ class LoadGenius:
         """
         self.file_name = file_name
         self.list_latest_dirs()
-        
-        # iterate over the latest folders for feature engineering
     def list_latest_dirs(self):
         dirs = os.listdir(LoadGenius.input_directory)
+        dirs.remove("MERGED")
         data = []
         # collect folder info:
         for folder in dirs:
@@ -62,7 +61,6 @@ class LoadGenius:
             if artist not in dct or timestamp > dct[artist][0]:
                 dct[artist] = (timestamp, folder)
         self.latest_dirs = {artist: os.path.join(LoadGenius.input_directory, latest_folder, self.file_name) for artist, (timestamp, latest_folder) in dct.items()}
-
 class EmotionClassifier:
     # TODO: do emotion classification, no matter the source
     def __init__(self, parquet_path, model_path = 'models/HF/SamLowe_roberta_base_go_emotions', thread=4, save=False):
@@ -87,15 +85,16 @@ class EmotionClassifier:
         self.df = pd.read_parquet(self.parquet_path)
         # check colnames has "id" & "lyrics":
         assert ("id" in self.df.columns) and ("lyrics" in self.df.columns), "Input data must have 'id' & 'lyrics' columns"
-        self.df['lyrics_clean'] = self.df['lyrics'].apply(clean_lyrics)
-        self.hf_dataset = Dataset.from_pandas(self.df[["id", "lyrics_clean"]])
+        df = self.df[["id", "lyrics"]].copy()
+        df['lyrics'] = df['lyrics'].apply(clean_lyrics)
+        self.hf_dataset = Dataset.from_pandas(df[["id", "lyrics"]])
     def load_model(self, top_k=6):
         batch_size = self.thread
         self.classifier = pipeline(model = self.model_path, task = "text-classification", 
                       device_map="auto", top_k=top_k, batch_size=batch_size)
     def classification(self):
         classify_lst = []
-        classification_results = self.classifier(KeyDataset(self.hf_dataset, "lyrics_clean"), truncation='longest_first')
+        classification_results = self.classifier(KeyDataset(self.hf_dataset, "lyrics"), truncation='longest_first')
         # organize results:
         for classify_dct in classification_results:
             clean_result = top_k_without_neutral(classify_dct, k=3)
@@ -115,7 +114,7 @@ class EmotionClassifier:
         file_path = os.path.join(directory, 'emotion.parquet')
         self.df.to_parquet(file_path)
         file_path = os.path.join(directory, 'emotion.csv')
-        self.df.to_csv(file_path)
+        self.df.to_csv(file_path, encoding='utf-8-sig', index=False)
 ## Helper functions:
 def clean_lyrics(lyrics):
     # TODO: remove metadat & delimiter from lyric chunks

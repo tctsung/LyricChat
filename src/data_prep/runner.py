@@ -29,7 +29,7 @@ def main():                   # eg. python src/scrape/runner.py genius "Lupe Fia
     if scrape_type == "genius":
         # scrape lyrics from Genius.com:
         Genius_key = ENV_VAR['Genius_key']   # load Genius API key from .env file
-        set_loggings(level="info", func_name="Genius song Scraper")
+        set_loggings(level="info", func_name="Genius Song Scraper")
         genius_scraper = GeniusScraper(artist_name, max_songs=int(max_songs), Genius_key=Genius_key)
         lyrics_raw = genius_scraper.raw_dict
         # process the lyrics:
