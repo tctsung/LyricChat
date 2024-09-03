@@ -9,17 +9,17 @@ os.chdir('../..')
 # load self-written functions:
 sys.path.append("src/")     
 from helper import *
-sys.path.append("src/scrape/")
+sys.path.append("src/data_prep/")
 from scrape import *  
 
 # get secret tokens:
 from dotenv import dotenv_values
 ENV_VAR = dotenv_values(".env")
 
-def main():                   # eg. python runner.py genius "Lupe Fiasco" 10
+def main():                   # eg. python src/scrape/runner.py genius "Lupe Fiasco" 10
     # collect system args:
     if len(sys.argv) != 4:
-        raise ValueError("Usage: python scrape.py <scrape_type> <artist_name> <max_songs>")
+        raise ValueError("Usage: python runner.py <scrape_type> <artist_name> <max_songs>")
 
     scrape_type, artist_name, max_songs = sys.argv[1:4]
     assert scrape_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"

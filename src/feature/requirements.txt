@@ -1,3 +1,4 @@
 pandas
+transformers
 guidance==0.1.15
 llama-cpp-python -C cmake.args="-DGGML_BLAS=ON;-DGGML_BLAS_VENDOR=OpenBLAS"

@@ -72,7 +72,7 @@ class GeniusScraper:
         # scrape songs:
         while True:       # if failed due to internal error, retry
             try:
-                artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort="title")
+                artist = genius.search_artist(self.artist_name, artist_id=artist_id, max_songs=self.max_songs, sort="popularity")
                 break
             except:
                 if self.retry_times == 0:    # stop if no more retries
@@ -111,7 +111,6 @@ class LyricProcessor:
         TODO: scrape lyrics of a specific artist from Genius API
         param json_path (str | dict): json output of GeniusScraper or OpenLyricsScraper
         param max_songs (int): maximum number of songs to scrape
-        param sort_method (str): sort method of the songs
         param check_similar_songs (bool): whether to remove songs with similar lyrics, the shortest song name will be kept
         param threshold (float): threshold of similarity
         """

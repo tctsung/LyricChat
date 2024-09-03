@@ -39,13 +39,17 @@ def get_artist_name(path):
         for line in fp:
             if line.startswith('Artist name: '):
                 return line.split(':')[1].strip()
-def clean_file_name(file_name):
+def clean_file_name(file_name, is_path=False):
 	# TODO: standardize file names
 	name_split = file_name.rsplit('.', 1)    # right split & max split is one
 	file_name = name_split[0]                # get file name without extension
 	# do processing:
-	cleaned_name = re.sub(r'[\s:/\\-]', ' ', file_name)   # .upper()
-	cleaned_name = re.sub(r'\s+', '_', cleaned_name.strip())
+	if is_path:      # ignore / and \ if input is a path
+		cleaned_name = re.sub(r'[\s:-]', ' ', file_name)   # .upper()
+		cleaned_name = re.sub(r'\s+', '_', cleaned_name.strip())
+	else:
+		cleaned_name = re.sub(r'[\s:/\\-]', ' ', file_name)   # .upper()
+		cleaned_name = re.sub(r'\s+', '_', cleaned_name.strip())
 	# add file extension back
 	if len(name_split) > 1:
 		cleaned_name += '.' + name_split[1]   
