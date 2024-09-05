@@ -1,0 +1,9 @@
+Start time: 2024-09-02 00:08:19
+End time: 2024-09-02 00:08:19
+Total # of input songs: 5
+Total # of Processed Songs: 5 (see lyrics_processed.json for more info)
+Total # of song chunks: 11 (see lyrics_processed.csv/parquet for more info)
+Applyed filters: ['removed_invalid_titles', 'removed_inadequate_word_cnt']
+Removed due to invalid title: 0 (see LyricProcessor.invalid_songs for more info)
+Removed due to inadequate word count: 0 (see LyricProcessor.inadquate_len_songs for more info)
+Removed due to simialrity check: 0 (see LyricProcessor.highly_similar_songs for more info)
