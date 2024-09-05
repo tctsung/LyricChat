@@ -72,6 +72,23 @@ def format_timedelta(td):
     hours, remainder = divmod(td.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{hours:02d} hr {minutes:02d} min {seconds:02d} sec"
+def latest_file(directory):
+    # TODO: get the latest file from the provided directory
+    # the latest file must contain get_timestamp() output in the end of file name
+	files = os.listdir(directory)   # get all files
+	latest_timestamp, latest_file = None, None
+	for fl in files:
+		fl_no_ext = fl.rsplit('.', 1)[0]        # get file name without extension
+		parts = fl_no_ext.split('_')
+		try:
+			timestamp = datetime.strptime('_'.join(parts[-6:]), '%Y_%m_%d_%H_%M_%S')
+			if latest_timestamp is None or timestamp > latest_timestamp:
+				latest_timestamp = timestamp
+				latest_file = fl
+		except:
+			logging.warning("Cannot parse timestamp in file: %s", fl)
+	return os.path.join(directory, latest_file)
+
 ## Suppress stdout:
 # import os
 # import contextlib

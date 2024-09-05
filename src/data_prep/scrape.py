@@ -1,4 +1,4 @@
-import lyricsgenius
+from lyricsgenius import Genius
 from difflib import SequenceMatcher as sm
 import pandas as pd
 import numpy as np
@@ -15,25 +15,16 @@ from datetime import datetime
 # load helper functions:
 import sys
 script_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(script_dir)
-sys.path.append(parent_dir)    # append src/ to sys.path to load helper.py     
+src_dir = os.path.dirname(script_dir)
+sys.path.append(src_dir)    # append src/ to sys.path to load helper.py     
 from helper import *
 
 # get secret tokens:
-env_path = os.path.join(os.path.dirname(parent_dir), ".env")  # load LyricChat/.env to env path
+env_path = os.path.join(os.path.dirname(src_dir), ".env")  # load LyricChat/.env to env path
 from dotenv import dotenv_values
 ENV_VAR = dotenv_values(env_path)
 
-# Run this code in the git repo with: `python src/scrape/scrape.py`
-# TODO: separate lyrics scrapping & preprocessing into 2 OOP
-# lyrics_raw: must be exact raw data (better for troubleshooting);  <artist>_<song title>: <lyrics>
-# add a OOP for github lyric-database
-
-# syntax: python scrape.py <scrape_type> <artist> <max_song>
-# eg. python src/lyric_scrapping/scrape.py genius "Imagine Dragons" 10
-def main():        
-    # collect system args:
-    set_loggings(level="info", func_name="Hello Lyric Scraper!")
+# Run this code with `python src/data_prep/runner.py`
 
 class OpenLyricsScraper:
     def __init__(self):
@@ -65,7 +56,7 @@ class GeniusScraper:
     def scrape_songs(self):
         # TODO: scrape lyrics from Genius API
         # collect required args:
-        genius = lyricsgenius.Genius(self.Genius_key)   # global variable
+        genius = Genius(self.Genius_key)   # global variable
         with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):  # suppress stdout
             artist_id = genius.search_artist(self.artist_name, max_songs=0, include_features=False).id 
     
@@ -91,7 +82,7 @@ class GeniusScraper:
     
     def save(self, directory = "data/genius"):
         # TODO: save lyrics as json
-        subfolder = clean_file_name(f"{self.artist_name} {get_timestamp()}")
+        subfolder = clean_file_name(f"{self.artist_name} {get_timestamp()}", is_path=False)
         self.save_directory = os.path.join(directory, subfolder)
         os.makedirs(self.save_directory, exist_ok=True)
         self.save_path = os.path.join(self.save_directory, 'lyrics_raw.json')

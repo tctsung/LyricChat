@@ -16,16 +16,16 @@ from extract_hf import *
 from dotenv import dotenv_values
 ENV_VAR = dotenv_values(".env")
 
-def main():                   # eg. python src/feature/runner.py genius
+def main():                      # eg. python src/feature/runner.py genius
     # collect system args:
     if len(sys.argv) != 2:
         raise ValueError("Usage: python src/feature/runner.py <'genius' or 'open-lyrics'>")
 
-    data_type = sys.argv[1]
-    assert data_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"
+    scrape_type = sys.argv[1]
+    assert scrape_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"
 
     # do feature extraction:
-    if data_type == "genius":
+    if scrape_type == "genius":    # genius data
         set_loggings(level="info", func_name="Emotion Classifier for Genius.com")
         genius_loader = LoadGenius(file_name = "lyrics_processed.parquet")
         logging.info("Identified %d artists", len(genius_loader.latest_dirs))
@@ -40,7 +40,7 @@ def main():                   # eg. python src/feature/runner.py genius
         df_merge.to_parquet(save_path + ".parquet")
         df_merge.to_csv(save_path + ".csv",encoding='utf-8-sig' , index=False)
         logging.info("Files saved to %s in parquet and csv format", save_path)
-    else:  # scrape_type == "open-lyrics":
+    else:                        # scrape_type == "open-lyrics":
         # add this part after implementing open-lyrics scraper
         pass
 

@@ -9,10 +9,9 @@ from tqdm import tqdm          # progress bar
 import pandas as pd
 import numpy as np
 
-# Potential future work
-# 1. Use LLM to decide the emotion categories based on Artist
-# 2. Let lamma-cpp-python use GPU for faster inference
-# 3. Do parallel processing or batch processing in inference
+#############################################################
+### THIS SCRIPT IS ABANDONED AND REPLACED BY extract_hf.py ##
+#############################################################
 
 def main():       # python .\src\emotion_feature_extraction\extract.py
     # set args:

@@ -17,7 +17,7 @@ from dotenv import dotenv_values
 ENV_VAR = dotenv_values(".env")
 
 def main():                   # eg. python src/scrape/runner.py genius "Lupe Fiasco" 10
-    # collect system args:
+    ## collect system args:
     if len(sys.argv) != 4:
         raise ValueError("Usage: python runner.py <scrape_type> <artist_name> <max_songs>")
 
@@ -25,19 +25,17 @@ def main():                   # eg. python src/scrape/runner.py genius "Lupe Fia
     assert scrape_type in ("genius", "open-lyrics"), "Scrape type must be either 'genius' or 'open-lyrics'"
     assert (max_songs.isdigit()) and (int(max_songs)>0), "Maximum number of songs must be an integer"
 
-    # do scraping & processing:
-    if scrape_type == "genius":
-        # scrape lyrics from Genius.com:
+    ## do lyric scraping & preprocessing
+    if scrape_type == "genius":              # scrape lyrics from Genius.com:
         Genius_key = ENV_VAR['Genius_key']   # load Genius API key from .env file
         set_loggings(level="info", func_name="Genius Song Scraper")
         genius_scraper = GeniusScraper(artist_name, max_songs=int(max_songs), Genius_key=Genius_key)
         lyrics_raw = genius_scraper.raw_dict
-        # process the lyrics:
         lyric_processor = LyricProcessor(lyrics_raw, scrape_type="genius", 
                                          check_invalid_title=True, check_word_cnt=True, 
                                          check_lyric_similarity=False, similarity_threshold=0.6)  # not necessary, this step is time consuming
         lyric_processor.save(genius_scraper.save_directory)   # save processed lyrics at same directory
-    else:  # scrape_type == "open-lyrics":
+    else:                                    # scrape_type == "open-lyrics":
         set_loggings(level="info", func_name="Open-Lyrics Scraper")
         # add this part after implementing open-lyrics scraper
 
