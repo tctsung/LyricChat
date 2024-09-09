@@ -165,10 +165,11 @@ class LyricProcessor:
                 "parent_id": key,
                 "chunk_order": idx
                 }
-                if idx == 0:                 # add artist name & song title to the first chunk for LLM to read
-                    chunk_data["lyrics"] = f"```\n<Artist name> {artist_name} <\Artist>\n<Song title> {song_title} <\Song title>\n<Lyric> \n{chunk}"
-                elif idx == len(chunks)-1:   # add delimiter to the last chunk
-                    chunk_data["lyrics"] = chunk_data['lyrics'] + "\n<\Lyric>```"
+                # disabled because this is noise for vector DB:
+                # if idx == 0:                 # add artist name & song title to the first chunk for LLM to read
+                #     chunk_data["lyrics"] = f"```\n<Artist name> {artist_name} <\Artist>\n<Song title> {song_title} <\Song title>\n<Lyric> \n{chunk}"
+                # elif idx == len(chunks)-1:   # add delimiter to the last chunk
+                #     chunk_data["lyrics"] = chunk_data['lyrics'] + "\n<\Lyric>```"
                 lyrics_chunks.append(chunk_data)    # save to list
         self.lyrics_chunks = pd.DataFrame(lyrics_chunks)
 

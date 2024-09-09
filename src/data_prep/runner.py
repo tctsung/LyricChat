@@ -33,7 +33,7 @@ def main():                   # eg. python src/scrape/runner.py genius "Lupe Fia
         lyrics_raw = genius_scraper.raw_dict
         lyric_processor = LyricProcessor(lyrics_raw, scrape_type="genius", 
                                          check_invalid_title=True, check_word_cnt=True, 
-                                         check_lyric_similarity=False, similarity_threshold=0.6)  # not necessary, this step is time consuming
+                                         check_lyric_similarity=True, similarity_threshold=0.6)  # this step is time consuming, but can save space & avoid exact same chunk in vector DB
         lyric_processor.save(genius_scraper.save_directory)   # save processed lyrics at same directory
     else:                                    # scrape_type == "open-lyrics":
         set_loggings(level="info", func_name="Open-Lyrics Scraper")

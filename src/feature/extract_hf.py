@@ -86,8 +86,7 @@ class EmotionClassifier:
         # check colnames has "id" & "lyrics":
         assert ("id" in self.df.columns) and ("lyrics" in self.df.columns), "Input data must have 'id' & 'lyrics' columns"
         df = self.df[["id", "lyrics"]].copy()
-        df['lyrics'] = df['lyrics'].apply(clean_lyrics)
-        self.hf_dataset = Dataset.from_pandas(df[["id", "lyrics"]])
+        self.hf_dataset = Dataset.from_pandas(df)
     def load_model(self, top_k=6):
         batch_size = self.thread
         self.classifier = pipeline(model = self.model_path, task = "text-classification", 
