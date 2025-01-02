@@ -1,10 +1,11 @@
 # large files
 large_data/
 models/
+data/chat_history/*
 
 # temp files
 temp/
-**/chat_history/
+test.ipynb
 
 # sensitive info
 .env
