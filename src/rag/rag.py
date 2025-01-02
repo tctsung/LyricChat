@@ -23,6 +23,8 @@ from dotenv import dotenv_values
 
 ENV_VAR = dotenv_values(".env")
 
+# ReAct prompt:
+
 
 # Instructured output schema:
 class Emotions(str, Enum):
@@ -84,6 +86,9 @@ If the input relates to song recommendation, simply do emotion classification.
 If the input is unrelated to song recommendation, try your best to provide brief and helpful response, but remind the user that you're here to recommend songs based on their mood.  
 If the input is empty or not human readable, encourage the user to chat more or share their feelings to receive song recommendations.
 """
+    # system prompt for chatbot output (step 2 in workflow)
+    sys_prompt_chat = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
+Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed."""
     # system prompt for Chatbot output (all steps in one prompt)
     sys_prompt_ReACT = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
@@ -221,18 +226,23 @@ output: I'm thrilled about this chance, but I'm scared of failing
         # buffers:
         self.chat_history = []
 
-    def chat(self, user_input):
+    def chat(self, user_input, stream=False):
         """
         TODO: combine chains for song recommendation workflow
         """
         self.user_input = user_input  # save user input for all chains
         # chain 1: classify user emotion
-        classify_res = self.chain_classify()
+        self.chain_classify()
         # don't continue workflow if no emotion classified and LLM suggest to stop:
-        if not classify_res["recommend_song"] and not self.user_emotion:
+        if not self.classify_res.recommend_song and not self.user_emotion:
             return self.temp_response
         # chain 2: retrieve song from DB
         self.chain_retrieve()  # get retrieved songs at self.retrieved_context
+        # chain 3: RAG for song recommendation
+        if stream:
+            yield self.chain_rag(stream=True)
+        else:
+            return self.chain_rag(stream=False)
 
     def chain_classify(self):
         """
@@ -240,14 +250,14 @@ output: I'm thrilled about this chance, but I'm scared of failing
         return: primary_emotion, supporting_emotion
         """
         messages = [sys_msg(LyricRAG.sys_prompt_classify), human_msg(self.user_input)]
-        res = self.model.run(messages, schema=UserEmotion, max_retries=3)
-        self.temp_response = res["response"]  # response if workflow stops
+        res = self.model.run(messages, schema=UserEmotion, max_retries=5)
+        self.temp_response = res.response  # response if workflow stops
         self.user_emotion = [
-            x for x in res["emotions"] if x != "Unidentified"
+            x for x in res.emotions if x != "Unidentified"
         ]  # for DB filtering
-        return res
+        self.classify_res = res
 
-    def chain_retrieve(self):
+    def chain_retrieve(self, top_k=1):
         """
         TODO: Retrive similar songs in string from DB filtered by user emotion
         """
@@ -267,17 +277,24 @@ output: I'm thrilled about this chance, but I'm scared of failing
             collection_name=self.collection_name,
             query=self.user_input,
             should_conditions=should_conditions,
-            limit=5,
+            limit=top_k,
         )
         retrieved_html = list(format_song(x) for x in songs)  # html format
         retrieved_str = "\n---------\n".join(retrieved_html)  # turn to string for RAG
         self.retrieved_context = retrieved_str
 
-    def chain_rag(self):
+    def chain_rag(self, stream=False):
         """
-        TODO: RAG for song recommendation
+        TODO: RAG for song recommendation; combine retrieved songs with output template
         """
-        pass
+        messages = [
+            sys_msg(LyricRAG.sys_prompt_ReACT.format(context=self.retrieved_context)),
+            human_msg(self.user_input),
+            AI_msg(f"User emotion: {self.user_emotion}"),
+        ]
+        if stream:
+            yield self.model.stream(messages)
+        return self.model.run(messages)
 
     def display_msg(self, show_input=True):
         # TODO: print msg for testing purposes

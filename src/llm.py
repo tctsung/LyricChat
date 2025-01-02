@@ -101,11 +101,11 @@ class InstructorLLM:
         if isinstance(messages, str):
             messages = [human_msg(messages)]
         assert isinstance(messages, list), "messages must be a list"
-        if schema:  # response without instructor
+        if schema:  # instructor structured output
             return self._run_instructor(
                 messages=messages, schema=schema, max_retries=max_retries
             )
-        else:  # instructor structured output
+        else:  # response without instructor
             return self._run_liteLLM(messages=messages)
 
     def _run_instructor(self, messages, schema, max_retries):
@@ -145,6 +145,9 @@ class InstructorLLM:
         for part in response:
             print(x)
         """
+        if isinstance(messages, str):
+            messages = [human_msg(messages)]
+        assert isinstance(messages, list), "messages must be a list"
         response = completion(
             model=self.model,  # recommend use ollama_chat then ollama
             messages=messages,
