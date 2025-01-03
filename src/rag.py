@@ -71,9 +71,9 @@ class UserEmotion(BaseModel):
 
     @field_validator("emotions")
     def Emotions_are_diff(cls, val):
-        # check if primary_emotion and secondary_emotion are different
-        if (val[0] == val[1]) and (Emotions.Unidentified not in val):
-            raise ValueError("primary_emotion and supporting_emotion must be different")
+        # check if there are exactly two emotions and they are different
+        if len(val) != 2:
+            raise ValueError("There must be two emotions")
         return [c.value for c in val]  # turn ENUM to str after validation
 
 
@@ -218,7 +218,9 @@ output: I'm thrilled about this chance, but I'm scared of failing
 
         # load LLM model & DB:
         self.model = llm.InstructorLLM(
-            deployment=self.deployment, base_url=self.base_url
+            deployment=self.deployment,
+            base_url=self.base_url,
+            GEMINI_API_KEY=ENV_VAR.get("GEMINI_API_KEY"),
         )
         self.db = qd.QdrantVecDB(
             url_db=self.url_db, api_key=ENV_VAR.get("Qdrant_API_KEY")
@@ -226,38 +228,53 @@ output: I'm thrilled about this chance, but I'm scared of failing
         # buffers:
         self.chat_history = []
 
-    def chat(self, user_input, stream=False):
+    def chat(self, user_input, top_r=1):
         """
-        TODO: combine chains for song recommendation workflow
+        TODO: chain_classify +  chain_rag
+        Args:
+            user_input (str): user input for chatbot
+            stream (bool): if True, will return a generator
+            top_r (int): number of songs to retrieve from DB as context
+        Attributes:
+            user_emotion (list): emotions classified from user input
+            classify_res (UserEmotion): classification result
+            retrieved_context (str): retrieved songs in html format
+
+        Eg.
+            from IPython.display import Markdown, display
+            chatbot = rag.LyricRAG()
+            response = chatbot.chat("I'm feeling happy", stream=False)
+            display(Markdown(response))
         """
         self.user_input = user_input  # save user input for all chains
         # chain 1: classify user emotion
         self.chain_classify()
-        # don't continue workflow if no emotion classified and LLM suggest to stop:
-        if not self.classify_res.recommend_song and not self.user_emotion:
+        if self.temp_response:
             return self.temp_response
-        # chain 2: retrieve song from DB
-        self.chain_retrieve()  # get retrieved songs at self.retrieved_context
-        # chain 3: RAG for song recommendation
-        if stream:
-            yield self.chain_rag(stream=True)
-        else:
-            return self.chain_rag(stream=False)
+        # chain 2: RAG for song recommendation
+        return self.chain_rag(
+            top_r, stream=False
+        )  # return response as string or generator
 
     def chain_classify(self):
         """
         TODO: first workflow for the chatbot, classify user input emotion
         return: primary_emotion, supporting_emotion
         """
+        self.temp_response = None  # buffer for temp response
         messages = [sys_msg(LyricRAG.sys_prompt_classify), human_msg(self.user_input)]
+        print(messages)
         res = self.model.run(messages, schema=UserEmotion, max_retries=5)
-        self.temp_response = res.response  # response if workflow stops
         self.user_emotion = [
             x for x in res.emotions if x != "Unidentified"
         ]  # for DB filtering
         self.classify_res = res
 
-    def chain_retrieve(self, top_k=1):
+        if (not self.classify_res.recommend_song) and (not self.user_emotion):
+            # no emotion classified and LLM suggest to stop
+            self.temp_response = res.response  # update temp response
+
+    def chain_retrieve(self, top_r):
         """
         TODO: Retrive similar songs in string from DB filtered by user emotion
         """
@@ -277,35 +294,59 @@ output: I'm thrilled about this chance, but I'm scared of failing
             collection_name=self.collection_name,
             query=self.user_input,
             should_conditions=should_conditions,
-            limit=top_k,
+            limit=top_r,
         )
         retrieved_html = list(format_song(x) for x in songs)  # html format
         retrieved_str = "\n---------\n".join(retrieved_html)  # turn to string for RAG
+        self.retrieved_songs = songs
         self.retrieved_context = retrieved_str
+        self.chain_rerank()
 
-    def chain_rag(self, stream=False):
+    def chain_rag(self, top_r=1, stream=True):
         """
         TODO: RAG for song recommendation; combine retrieved songs with output template
+        Args:
+            streamlit (bool): if True, will return a generator for st.write_stream;
+                              otherwise return the whole response as string
+        return: LLM response as string or generator
         """
+        self.chain_retrieve(top_r)  # get retrieved songs at self.retrieved_context
         messages = [
-            sys_msg(LyricRAG.sys_prompt_ReACT.format(context=self.retrieved_context)),
+            sys_msg(
+                LyricRAG.sys_prompt_ReACT.format(context=self.retrieved_context)
+                + LyricRAG.one_shot
+            ),
             human_msg(self.user_input),
             AI_msg(f"User emotion: {self.user_emotion}"),
         ]
         if stream:
-            yield self.model.stream(messages)
-        return self.model.run(messages)
+            return self.model.stream(messages)  # return generator
+        return self.model.run(messages)  # return response as whole string
 
-    def display_msg(self, show_input=True):
-        # TODO: print msg for testing purposes
-        if show_input:
-            print("--------- Input ---------")
-            print(self.rag_output["input"])
-        print("--------- Model Output ---------")
-        print(self.rag_output["answer"])
+    def chain_rerank(self):
+        """TODO: rerank retrieved songs & collect required info for chatbot"""
+        idx = 0  # idx for song rank 1
+        self.selected_song = self.retrieved_songs[idx]
+        self.youtube_link = self.selected_song["metadata"]["youtube_link"]
 
 
 ######## Helper Functions ########
+def yield_stream(chunks):
+    """
+    TODO: helper for InstructorLLM.stream to preprocess & yield the chunk
+    this is for use with st.write_stream
+    Eg.
+    import src.llm as llm
+    import src.rag.rag as rag
+    import streamlit as st
+    chatbot = rag.LyricRAG()
+    response = chatbot.chat(user_input = "I'm feeling happy today")
+    st.write_stream(rag.yield_stream(response))
+    """
+    for chunk in chunks:
+        yield llm.preprocess_stream(chunk)
+
+
 def get_timestamp():
     current_timestamp = datetime.now()
     return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")

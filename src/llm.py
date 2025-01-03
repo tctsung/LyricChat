@@ -25,7 +25,7 @@ lyric_msg = lambda lyric: {
 
 
 class InstructorLLM:
-    GEMINI_MODEL = "gemini-1.5-pro"  # "gemini-1.5-pro"
+    GEMINI_MODEL = "gemini-1.5-flash"  # "gemini-1.5-pro"
     OLLAMA_MODEL = "llama3"
 
     def __init__(
@@ -140,10 +140,16 @@ class InstructorLLM:
     def stream(self, messages):
         """
         TODO: stream LLM response with liteLLM
-        Eg.
-        response = llm.stream(messages=[{ "content": "Hi!", "role": "user"}])
-        for part in response:
-            print(x)
+        Args:
+            messages (List[Dict]): list of message dict
+            yield_response (bool): if True, yield response in chunks; otherwise return a generator
+        Eg. 1
+        response = llm.stream(messages="why is the sky blue?", yield_response=True)
+        st.write_stream(response)
+        Eg. 2
+        response = llm.stream(messages="why is the sky blue?", yield_response=False)
+        for chunk in response:
+            print(chunk.choices[0].delta.content or "")
         """
         if isinstance(messages, str):
             messages = [human_msg(messages)]
@@ -154,5 +160,11 @@ class InstructorLLM:
             api_base=self.base_url,
             stream=True,
         )
-        for part in response:
-            yield (part.choices[0].delta.content or "")
+        return response
+
+
+def preprocess_stream(chunk):
+    """
+    TODO: helper for InstructorLLM.stream to preprocess the chunk
+    """
+    return chunk.choices[0].delta.content or ""
