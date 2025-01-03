@@ -1,14 +1,14 @@
 import os
 import sys
 
-# set working directory to LyricChat repo root
-print(f"Current working directory: {os.getcwd()}")
+# set working directory to LyricChat repo root (to identify .env file)
+script_path = os.path.dirname(os.path.abspath(__file__))
+# add src folder to sys.path
+src_folder = os.path.join(script_path, "src")
+sys.path.append(src_folder)
 
-# Add the root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
-
-import src.rag.rag as rag
-from src.llm import human_msg, AI_msg
+import rag
+from llm import human_msg, AI_msg
 import pandas as pd
 import streamlit as st
 from streamlit_player import st_player  # embedd music/video
@@ -24,10 +24,10 @@ def get_timestamp():
 
 
 # chat history file:
-chat_history_dir = "data/chat_history/"
+chat_history_dir = "data\chat_history"
 
 
-def main():  # streamlit run src/app/webpage.py --server.baseUrlPath=/d/code/LyricChat
+def main():  # streamlit run main.py
     setup_config()  # setup webpage
     display_chat_history()  # display chat history
     chatbot = rag.LyricRAG()  # initialize RAG-LLM
@@ -121,21 +121,22 @@ def setup_config():
 
 
 def restart_conversation():
-    """Helper for setup_confit() to restart the conversation"""
+    """Helper for setup_config() to restart the conversation"""
     if "session_ID" in st.session_state:
+        save_chat_history()  # Save current chat history before restarting
         del st.session_state.session_ID  # delete chat history
         del st.session_state.chat_history
-    st.session_state.selected_artist = "All Artists"  # Reset to default artist
 
 
 def display_chat_history():
-    # TODO: load chat history into conversation
+    # Load chat history into conversation
     if "session_ID" not in st.session_state:  # initialize a session w chat history
         st.session_state.chat_history = []
         st.session_state.session_ID = uuid.uuid4().hex
+        print(f"Session ID: {st.session_state.session_ID}")
         # create an empty excel file for chat history:
-        chat_history_file = (
-            chat_history_dir + f"chat_history_{st.session_state.session_ID}.xlsx"
+        chat_history_file = os.path.join(
+            chat_history_dir, f"chat_history_{st.session_state.session_ID}.xlsx"
         )
         df_empty = pd.DataFrame(columns=["session_ID", "timestamp", "role", "content"])
         df_empty.to_excel(chat_history_file, engine="openpyxl", index=False)
@@ -155,8 +156,8 @@ def save_chat_history():
         # save chat history to excel file:
         msg = st.session_state.chat_history[-1]
         role = "Human" if msg["role"] == "user" else "AI"
-        chat_history_file = (
-            chat_history_dir + f"chat_history_{st.session_state.session_ID}.xlsx"
+        chat_history_file = os.path.join(
+            chat_history_dir, f"chat_history_{st.session_state.session_ID}.xlsx"
         )
         df_history = pd.read_excel(chat_history_file, engine="openpyxl")
         df_history.loc[df_history.shape[0]] = [

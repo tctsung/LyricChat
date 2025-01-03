@@ -1,22 +1,17 @@
 import os
+import sys
 from datetime import datetime
 import pandas as pd
 
-# self-written modules:
-import src.llm as llm  # model
-from src.llm import sys_msg, human_msg, AI_msg
-import src.rag.qdrant_db as qd  # database
+import llm  # model
+from llm import sys_msg, human_msg, AI_msg
+import qdrant_db as qd  # database
 
 # structured output:
 from pydantic import BaseModel, Field, model_validator, field_validator
 from enum import Enum
 from typing import Literal
 
-
-# set working directory to LyricChat repo root (to identify .env file)
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
-os.chdir("../..")
 
 # load API keys:
 from dotenv import dotenv_values
@@ -270,7 +265,7 @@ output: I'm thrilled about this chance, but I'm scared of failing
         ]  # for DB filtering
         self.classify_res = res
 
-        if (not self.classify_res.recommend_song) and (not self.user_emotion):
+        if not self.classify_res.recommend_song:
             # no emotion classified and LLM suggest to stop
             self.temp_response = res.response  # update temp response
 

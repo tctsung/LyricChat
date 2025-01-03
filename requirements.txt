@@ -1,0 +1,7 @@
+pandas
+numpy
+qdrant-client[fastembed-gpu]
+unidecode
+streamlit
+streamlit-player
+pyarrow
