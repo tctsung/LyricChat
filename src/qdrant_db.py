@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 import uuid
 from dotenv import dotenv_values
 
-ENV_VAR = dotenv_values(".env")
+ENV_VAR = dotenv_values(".streamlit\secrets.toml")
 
 
 class QdrantVecDB:
