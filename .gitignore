@@ -1,6 +1,5 @@
 # large files
 large_data/
-models/
 data/chat_history/*
 
 # temp files
