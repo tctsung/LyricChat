@@ -1,7 +1,4 @@
-import os
-import sys
 from datetime import datetime
-import pandas as pd
 import random
 import llm  # model
 from llm import sys_msg, human_msg, AI_msg

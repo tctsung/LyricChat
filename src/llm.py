@@ -6,13 +6,6 @@ from typing_extensions import TypedDict
 from litellm import completion
 import instructor
 import os
-from operator import add
-
-
-######### helper functions that are similar to LangChain but more flxible & works with class InstructorLLM ####
-class MsgState(TypedDict):
-    messages: Annotated[list[dict], add]  # list + list
-
 
 # Replacements of HumanMessage, AIMessage, SystemMessage in langchain_core.messages
 human_msg = lambda content: {"role": "user", "content": content}

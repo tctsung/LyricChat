@@ -12,11 +12,8 @@ from llm import human_msg, AI_msg
 import pandas as pd
 import streamlit as st
 from streamlit_player import st_player  # embedd music/video
-import re
 import uuid  # unique ID
-import time
 from datetime import datetime
-import xlsxwriter
 from io import BytesIO
 
 
