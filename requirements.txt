@@ -12,3 +12,4 @@ pandas
 numpy
 torch --index-url https://download.pytorch.org/whl/cpu
 sentence-transformers
+openpyxl
