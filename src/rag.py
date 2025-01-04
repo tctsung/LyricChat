@@ -3,6 +3,7 @@ import random
 import llm  # model
 from llm import sys_msg, human_msg, AI_msg
 import qdrant_db as qd  # database
+import os
 
 # structured output:
 from pydantic import BaseModel, Field, model_validator, field_validator
@@ -11,9 +12,8 @@ from typing import Literal
 
 
 # load API keys:
-from dotenv import dotenv_values
-
-ENV_VAR = dotenv_values(".streamlit\secrets.toml")
+# from dotenv import dotenv_values
+# ENV_VAR = dotenv_values(".streamlit\secrets.toml")
 
 # ReAct prompt:
 
@@ -219,10 +219,10 @@ output: I'm thrilled about this chance, but I'm scared of failing
         self.model = llm.InstructorLLM(
             deployment=self.deployment,
             base_url=self.base_url,
-            GEMINI_API_KEY=ENV_VAR.get("GEMINI_API_KEY"),
+            GEMINI_API_KEY=os.environ["GEMINI_API_KEY"],
         )
         self.db = qd.QdrantVecDB(
-            url_db=self.url_db, api_key=ENV_VAR.get("Qdrant_API_KEY")
+            url_db=self.url_db, api_key=os.environ["Qdrant_API_KEY"]
         )
         # buffers:
         self.chat_history = []

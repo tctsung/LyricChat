@@ -13,3 +13,4 @@ numpy
 torch --index-url https://download.pytorch.org/whl/cpu
 sentence-transformers
 openpyxl
+XlsxWriter==3.2.0

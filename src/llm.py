@@ -72,7 +72,7 @@ class InstructorLLM:
         ), "Please set GEMINI_API_KEY as an environment variable or pass it as an argument"
 
         # set API key
-        genai.configure(api_key=self.GEMINI_API_KEY)
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
         # create instructor client:
         model_name = "models/{model}".format(model=InstructorLLM.GEMINI_MODEL)

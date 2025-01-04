@@ -16,6 +16,10 @@ import uuid  # unique ID
 from datetime import datetime
 from io import BytesIO
 
+# Set up environment variables
+os.environ["Qdrant_API_KEY"] = st.secrets["Qdrant_API_KEY"]
+os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+
 
 def get_timestamp():
     current_timestamp = datetime.now()
