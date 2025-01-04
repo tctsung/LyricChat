@@ -90,17 +90,26 @@ class InstructorLLM:
 
         # create
 
-    def run(self, messages, schema=None, max_retries=3):
+    def run(
+        self,
+        messages,
+        schema=None,
+        max_retries=3,
+        chat_history: List[dict] = [],
+        memory: int = 2,
+    ):
         """
         TODO: generate LLM response with/without Instructor structured output
               if schema
         Args:
             messages (List[Dict]): list of message dict
-
+            schema (Dict): schema for instructor structured output
+            max_retries (int): number of retries
+            chat_history (List[Dict]): list of chat history
+            memory (int): number of memory to include in the messages
         """
-        if isinstance(messages, str):
-            messages = [human_msg(messages)]
-        assert isinstance(messages, list), "messages must be a list"
+        messages = msg_w_memory(messages, chat_history, memory)
+
         if schema:  # instructor structured output
             return self._run_instructor(
                 messages=messages, schema=schema, max_retries=max_retries
@@ -137,7 +146,7 @@ class InstructorLLM:
         )
         return response.choices[0].message.content or ""
 
-    def stream(self, messages):
+    def stream(self, messages, chat_history: List[dict] = [], memory: int = 2):
         """
         TODO: stream LLM response with liteLLM
         Args:
@@ -151,9 +160,7 @@ class InstructorLLM:
         for chunk in response:
             print(chunk.choices[0].delta.content or "")
         """
-        if isinstance(messages, str):
-            messages = [human_msg(messages)]
-        assert isinstance(messages, list), "messages must be a list"
+        messages = msg_w_memory(messages, chat_history, memory)
         response = completion(
             model=self.model,  # recommend use ollama_chat then ollama
             messages=messages,
@@ -161,6 +168,31 @@ class InstructorLLM:
             stream=True,
         )
         return response
+
+
+###### Helper functions ######
+def msg_w_memory(messages, chat_history, memory):
+    """TODO: prepare messages with memory"""
+    if isinstance(messages, str):
+        messages = [human_msg(messages)]
+    assert isinstance(messages, list), "messages must be a list"
+    assert isinstance(memory, int), "memory must be an integer"
+
+    # Extract system message if present
+    system_message = [msg for msg in messages if msg["role"] == "system"]
+    if system_message:  # remove system message from messages
+        messages = [msg for msg in messages if msg["role"] != "system"]
+
+    # Limit chat history based on memory
+    if memory > 0:
+        chat_history = chat_history[-(2 * memory) :]
+
+    # Combine system message, chat history, and new messages
+    combined_messages = []
+    combined_messages.extend(system_message)
+    combined_messages.extend(chat_history)
+    combined_messages.extend(messages)
+    return combined_messages
 
 
 def preprocess_stream(chunk):

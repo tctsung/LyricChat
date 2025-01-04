@@ -16,11 +16,17 @@ import re
 import uuid  # unique ID
 import time
 from datetime import datetime
+import xlsxwriter
+from io import BytesIO
 
 
 def get_timestamp():
     current_timestamp = datetime.now()
     return current_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def video_msg(video_url):
+    return {"role": "video", "content": video_url}
 
 
 # chat history file:
@@ -37,29 +43,37 @@ def main():  # streamlit run main.py
     )
     if user_input:  # if user type something
         st.session_state.chat_history.append(human_msg(user_input))
-        save_chat_history()
+        save_chat_history()  # save user input
         with st.chat_message("Human"):
             st.markdown(user_input)
         # Stage one, do sentiment analysis for DB filtering
         progress_bar = st.progress(0, text="Identifying emotion...")
         chatbot.user_input = user_input
+        chatbot.chat_history = st.session_state.chat_history
+        chatbot.memory = 5
         chatbot.chain_classify()
 
         if chatbot.temp_response is not None:  # LLM suggest don't continue workflow
             with st.chat_message("AI"):
-                progress_bar.progress(40, text="LLM suggest to stop workflow")
+                progress_bar.progress(
+                    40,
+                    text="Insufficient or unrelated input detected; pausing workflow.",
+                )
                 st.markdown(chatbot.temp_response)
                 model_response = chatbot.temp_response
         else:  # Stage two, song recommendation
-            classified_result = f"Calssified emotion: **{chatbot.user_emotion}**"
-            progress_bar.progress(40, text=classified_result)
+            progress_bar.progress(
+                40, text=f"Classified emotions: {chatbot.classify_res.emotions}"
+            )
             with st.chat_message("AI"):
-                response = chatbot.chain_rag(top_r=1, stream=True)
+                response = chatbot.chain_rag(top_r=5, stream=True)
                 model_response = st.write_stream(rag.yield_stream(response))
                 st_player(chatbot.youtube_link)
         # save chat history:
         st.session_state.chat_history.append(AI_msg(model_response))
-        save_chat_history()  # save chat history
+        if hasattr(chatbot, "youtube_link"):
+            st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
+        save_chat_history()
 
 
 def setup_config():
@@ -107,41 +121,41 @@ def setup_config():
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
-    col1, col2 = st.columns(
-        [1, 1], vertical_alignment="bottom"
-    )  # Adjust column widths to be equal
+    col1, col2, col3 = st.columns([1, 1, 1])  # Adjust column widths to be equal
     with col1:
-        if st.button("Give us your feedback", use_container_width=True):
-            js = "window.open('https://github.com/tctsung')"  # JavaScript to open link in new tab
-            html = f"<script>{js}</script>"
-            st.markdown(html, unsafe_allow_html=True)
-    with col2:
+        st.link_button("Give us your feedback", "https://forms.gle/Xq2vo4TcVa4UMyXNA")
+    with col3:
         if st.button("Restart the Chat", use_container_width=True):
             restart_conversation()
+    with col2:
+        df = save_chat_history(return_df=True)
+        if isinstance(df, pd.DataFrame):
+            output = BytesIO()
+            # Write the DataFrame to the BytesIO object
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                df.to_excel(
+                    writer, index=False, sheet_name="Sheet1"
+                )  # Save DataFrame to Excel
+            st.download_button(
+                label="Download Chat History",
+                data=output.getvalue(),
+                file_name=f"chat_history_{st.session_state.session_ID}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        else:
+            st.button("Download Chat History", disabled=True, use_container_width=True)
 
 
 def restart_conversation():
     """Helper for setup_config() to restart the conversation"""
     if "session_ID" in st.session_state:
-        save_chat_history()  # Save current chat history before restarting
         del st.session_state.session_ID  # delete chat history
         del st.session_state.chat_history
 
 
 def display_chat_history():
     # Load chat history into conversation
-    if "session_ID" not in st.session_state:  # initialize a session w chat history
-        st.session_state.chat_history = []
-        st.session_state.session_ID = uuid.uuid4().hex
-        print(f"Session ID: {st.session_state.session_ID}")
-        # create an empty excel file for chat history:
-        chat_history_file = os.path.join(
-            chat_history_dir, f"chat_history_{st.session_state.session_ID}.xlsx"
-        )
-        df_empty = pd.DataFrame(columns=["session_ID", "timestamp", "role", "content"])
-        df_empty.to_excel(chat_history_file, engine="openpyxl", index=False)
-    else:
-        # show chat history on UI page:
+    if "chat_history" in st.session_state:  # initialize a session w chat history
         for msg in st.session_state.chat_history:
             if msg["role"] == "assistant":
                 with st.chat_message("AI"):
@@ -149,24 +163,26 @@ def display_chat_history():
             elif msg["role"] == "user":
                 with st.chat_message("Human"):
                     st.markdown(msg["content"])
+            elif msg["role"] == "video":
+                with st.chat_message("AI"):
+                    st_player(msg["content"])
 
 
-def save_chat_history():
-    if st.session_state.chat_history:
-        # save chat history to excel file:
-        msg = st.session_state.chat_history[-1]
-        role = "Human" if msg["role"] == "user" else "AI"
+def save_chat_history(return_df=False):
+    if "session_ID" not in st.session_state:  # initialize a session w chat history
+        st.session_state.chat_history = []
+        st.session_state.session_ID = uuid.uuid4().hex
+    elif st.session_state.chat_history:
+        # open chat history file:
         chat_history_file = os.path.join(
             chat_history_dir, f"chat_history_{st.session_state.session_ID}.xlsx"
         )
-        df_history = pd.read_excel(chat_history_file, engine="openpyxl")
-        df_history.loc[df_history.shape[0]] = [
-            st.session_state.session_ID,
-            get_timestamp(),
-            role,
-            msg["content"],
-        ]
-        df_history.to_excel(chat_history_file, engine="openpyxl", index=False)
+
+        # save chat history to excel file:
+        df_chat = pd.DataFrame(st.session_state.chat_history)
+        df_chat.to_excel(chat_history_file, engine="openpyxl", index=False)
+        if return_df:
+            return df_chat
 
 
 if __name__ == "__main__":

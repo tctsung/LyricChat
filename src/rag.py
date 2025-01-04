@@ -2,7 +2,7 @@ import os
 import sys
 from datetime import datetime
 import pandas as pd
-
+import random
 import llm  # model
 from llm import sys_msg, human_msg, AI_msg
 import qdrant_db as qd  # database
@@ -48,14 +48,16 @@ class Emotions(str, Enum):
 class UserEmotion(BaseModel):
     """
     TODO: Schema for user emotion classification in chat
-    Can use `recommend_song` to decide whether to continue workflow
+    use `recommendation_status` to decide whether to continue workflow
     """
 
     human_readable: bool = Field(
         description="Boolean judgment indicating whether the user input is human readable"
     )
-    recommend_song: bool = Field(
-        description="Boolean indicating whether the model should continue current workflow to recommend a song"
+    recommendation_status: Literal["related", "unrelated"] = Field(
+        description="Indicates whether the user's input is related or unrelated to song recommendation. "
+        "Set to 'related' if the input provides enough emotional or contextual information for a recommendation, "
+        "otherwise 'unrelated' to prompt the user for more input."
     )
     emotions: list[Emotions] = Field(
         description="The top two emotions observed in the lyrics. Two emotions must be different unless it's unidentified."
@@ -84,6 +86,8 @@ If the input is empty or not human readable, encourage the user to chat more or 
     # system prompt for chatbot output (step 2 in workflow)
     sys_prompt_chat = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed."""
+    unclear_response = """If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, `Hmm, Wonda's having a bit of trouble to figure that one out!
+But I'm all ears if you want to chat. I can recommend you some songs too!`"""
     # system prompt for Chatbot output (all steps in one prompt)
     sys_prompt_ReACT = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
@@ -93,8 +97,6 @@ To achieve this:
 1. Analyze the user's input to determine the emotional context and sentiment.
 2. Respond appropriately based on the identified emotion: celebrate positive emotions, provide comfort for negative ones even if they express distress or harmful thoughts 
 3. Reference the most suitable song lyrics from the provided CONTEXT based on the user's mood, and explain why it fits. Avoid recommending the same song more than once.
-4. If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, `Hmm, Wonda's having a bit of trouble to figure that one out!
-But I'm all ears if you want to chat. I can recommend you some songs too!`
 
 Recommend one song from the followings options based ONLY on the provided context:
 <context>
@@ -106,7 +108,12 @@ Response Formatting Instructions:
 1. Opening Paragraph (Emotional Support): Start with a short paragraph that offers emotional support and connects with the user. Keep it concise, up to 4 sentences.
 2. Song Description: Provide a brief description of the recommended song, explaining why it resonates with the user's current mood. Do not mention the song's name or title. Keep this section under 2 sentences.
 3. Lyrics Quotation: Share lyrics from the song that resonate with the user's current feelings. Format the lyrics as a blockquote and use bold text to emphasize them. 
-Include around 4 lines of lyrics without additional commentary in the following format- >**`lyrics`**
+Include around 4 lines of lyrics without additional commentary. IMPORTANT: Add two spaces at the end of each line (except the last line) to create line breaks:
+
+>**lyric line 1**  [two spaces here]
+>**lyric line 2**  [two spaces here]
+>**lyric line 3**  [two spaces here]
+>**lyric line 4**
 4. Song Attribution: End with the song title and artist's name in the following format: — *<Title>* by <Artist>
 """
     one_shot = """Format Example:
@@ -117,10 +124,10 @@ output: I can feel the weight you’re carrying—the push and pull between want
 
 The song I’m sharing with you reflects those moments of self-doubt, yet it’s also a reminder that you’ve already proven yourself in so many ways. It encourages you to take it easy and trust that you’re enough, just as you are.
 
-> **Who made you think you weren't good enough?
-Who made, who made, who made, who made you think that you weren't good enough?
-Easy now. You don't have nothing left to prove
-Easy now. Oh, it's laid out for you**
+> **Who made you think you weren't good enough?**  
+> **Who made, who made, who made, who made you think that you weren't good enough?**  
+> **Easy now. You don't have nothing left to prove**  
+> **Easy now. Oh, it's laid out for you**  
 \n
 — *Easy* by Imagine Dragons
 </example>
@@ -223,7 +230,7 @@ output: I'm thrilled about this chance, but I'm scared of failing
         # buffers:
         self.chat_history = []
 
-    def chat(self, user_input, top_r=1):
+    def chat(self, user_input, chat_history: list = [], memory=0, top_r=5):
         """
         TODO: chain_classify +  chain_rag
         Args:
@@ -242,6 +249,8 @@ output: I'm thrilled about this chance, but I'm scared of failing
             display(Markdown(response))
         """
         self.user_input = user_input  # save user input for all chains
+        self.chat_history = chat_history  # save chat history
+        self.memory = memory  # save memory for chat history
         # chain 1: classify user emotion
         self.chain_classify()
         if self.temp_response:
@@ -258,15 +267,20 @@ output: I'm thrilled about this chance, but I'm scared of failing
         """
         self.temp_response = None  # buffer for temp response
         messages = [sys_msg(LyricRAG.sys_prompt_classify), human_msg(self.user_input)]
-        print(messages)
-        res = self.model.run(messages, schema=UserEmotion, max_retries=5)
+        res = self.model.run(
+            messages,
+            schema=UserEmotion,
+            max_retries=5,
+            chat_history=self.chat_history,
+            memory=self.memory,
+        )
         self.user_emotion = [
             x for x in res.emotions if x != "Unidentified"
         ]  # for DB filtering
         self.classify_res = res
 
-        if not self.classify_res.recommend_song:
-            # no emotion classified and LLM suggest to stop
+        if (res.recommendation_status == "unrelated") or (res.human_readable == False):
+            # user input is unclear/unrelated, suggest to chat more
             self.temp_response = res.response  # update temp response
 
     def chain_retrieve(self, top_r):
@@ -291,13 +305,12 @@ output: I'm thrilled about this chance, but I'm scared of failing
             should_conditions=should_conditions,
             limit=top_r,
         )
-        retrieved_html = list(format_song(x) for x in songs)  # html format
-        retrieved_str = "\n---------\n".join(retrieved_html)  # turn to string for RAG
         self.retrieved_songs = songs
-        self.retrieved_context = retrieved_str
         self.chain_rerank()
+        # turn to html format string for RAG
+        self.retrieved_context = format_song(self.selected_song)
 
-    def chain_rag(self, top_r=1, stream=True):
+    def chain_rag(self, top_r=5, stream=True):
         """
         TODO: RAG for song recommendation; combine retrieved songs with output template
         Args:
@@ -316,11 +329,15 @@ output: I'm thrilled about this chance, but I'm scared of failing
         ]
         if stream:
             return self.model.stream(messages)  # return generator
-        return self.model.run(messages)  # return response as whole string
+        return self.model.run(
+            messages, chat_history=self.chat_history, memory=self.memory
+        )  # return response as whole string
 
     def chain_rerank(self):
-        """TODO: rerank retrieved songs & collect required info for chatbot"""
-        idx = 0  # idx for song rank 1
+        """TODO: rerank retrieved songs & collect required info for chatbot
+        currently random, will be replaced by reranking algorithm
+        """
+        idx = random.randint(0, len(self.retrieved_songs) - 1)
         self.selected_song = self.retrieved_songs[idx]
         self.youtube_link = self.selected_song["metadata"]["youtube_link"]
 
@@ -334,6 +351,7 @@ def yield_stream(chunks):
     import src.llm as llm
     import src.rag.rag as rag
     import streamlit as st
+
     chatbot = rag.LyricRAG()
     response = chatbot.chat(user_input = "I'm feeling happy today")
     st.write_stream(rag.yield_stream(response))
