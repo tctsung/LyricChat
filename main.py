@@ -39,8 +39,6 @@ def main():  # streamlit run main.py
         "Share what's on your mind. Wonda will find the perfect song to match your mood!"
     )
     if user_input:  # if user type something
-        st.session_state.chat_history.append(human_msg(user_input))
-        save_chat_history()  # save user input
         with st.chat_message("Human"):
             st.markdown(user_input)
         # Stage one, do sentiment analysis for DB filtering
@@ -67,10 +65,10 @@ def main():  # streamlit run main.py
                 model_response = st.write_stream(rag.yield_stream(response))
                 st_player(chatbot.youtube_link)
         # save chat history:
+        st.session_state.chat_history.append(human_msg(user_input))  # save user input
         st.session_state.chat_history.append(AI_msg(model_response))
         if hasattr(chatbot, "youtube_link"):
             st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
-        save_chat_history()
 
 
 def setup_config():
@@ -83,6 +81,10 @@ def setup_config():
         """,
         unsafe_allow_html=True,
     )
+    # create buffer:
+    if "session_ID" not in st.session_state:  # initialize a session w chat history
+        st.session_state.chat_history = []
+        st.session_state.session_ID = uuid.uuid4().hex
     # set colors:
     custom_css = """
     <style>
@@ -125,8 +127,8 @@ def setup_config():
         if st.button("Restart the Chat", use_container_width=True):
             restart_conversation()
     with col2:
-        df = save_chat_history(return_df=True)
-        if isinstance(df, pd.DataFrame):
+        df = pd.DataFrame(st.session_state.chat_history)
+        if df.shape[0] > 0:
             output = BytesIO()
             # Write the DataFrame to the BytesIO object
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -145,9 +147,8 @@ def setup_config():
 
 def restart_conversation():
     """Helper for setup_config() to restart the conversation"""
-    if "session_ID" in st.session_state:
-        del st.session_state.session_ID  # delete chat history
-        del st.session_state.chat_history
+    st.session_state.chat_history = []
+    st.session_state.session_ID = uuid.uuid4().hex
 
 
 def display_chat_history():
@@ -163,23 +164,6 @@ def display_chat_history():
             elif msg["role"] == "video":
                 with st.chat_message("AI"):
                     st_player(msg["content"])
-
-
-def save_chat_history(return_df=False):
-    if "session_ID" not in st.session_state:  # initialize a session w chat history
-        st.session_state.chat_history = []
-        st.session_state.session_ID = uuid.uuid4().hex
-    elif st.session_state.chat_history:
-        # open chat history file:
-        chat_history_file = os.path.join(
-            chat_history_dir, f"chat_history_{st.session_state.session_ID}.xlsx"
-        )
-
-        # save chat history to excel file:
-        df_chat = pd.DataFrame(st.session_state.chat_history)
-        df_chat.to_excel(chat_history_file, engine="openpyxl", index=False)
-        if return_df:
-            return df_chat
 
 
 if __name__ == "__main__":
