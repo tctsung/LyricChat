@@ -7,7 +7,7 @@ from qdrant_client.models import VectorParams, Distance, PointStruct, PayloadSch
 from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny  # filter
 import types  # for generator type
 from typing import Literal
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 import uuid
 from dotenv import dotenv_values
 
@@ -17,7 +17,7 @@ ENV_VAR = dotenv_values(".streamlit\secrets.toml")
 class QdrantVecDB:
     def __init__(
         self,
-        model="models/BAAI_bge-small-en-v1.5",
+        model="BAAI/bge-small-en-v1.5",
         device="cpu",
         url_db="http://localhost:6333",
         api_key=None,
@@ -41,13 +41,12 @@ class QdrantVecDB:
         # change to new model if provided:
         if model is not None:
             self.model = model
-        # load model:
-        self.embedding_model = SentenceTransformer(self.model)
-        self.embedding_model.to(self.device)  # move to GPU if available
+        # load model (cache at models so no need to reload after first time)
+        self.embedding_model = TextEmbedding(model_name=self.model, cache_dir="models/")
 
         # get embedding dimension:
-        temp_output = self.embedding_model.encode("", batch_size=1)
-        self.embedding_dimension = temp_output.shape[0]
+        temp_output = self.embedding_model.embed("")
+        self.embedding_dimension = len(list(temp_output)[0])
 
     def read(
         self,
@@ -62,10 +61,11 @@ class QdrantVecDB:
         """
         # create filter:
         filter = self._create_qdrant_filter(should_conditions, must_conditions)
-
+        generator_output = self.embedding_model.embed(query)
+        query_vector = list(generator_output)[0].tolist()
         search_result = self.client.search(
             collection_name=collection_name,
-            query_vector=self.embedding_model.encode(query),
+            query_vector=query_vector,
             with_payload=True,
             limit=limit,
             query_filter=filter,

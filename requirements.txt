@@ -10,7 +10,5 @@ streamlit==1.37.1
 streamlit-player==0.1.5
 pandas
 numpy
-torch --index-url https://download.pytorch.org/whl/cpu
-sentence-transformers
 openpyxl
 XlsxWriter==3.2.0
