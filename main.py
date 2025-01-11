@@ -35,9 +35,10 @@ chat_history_dir = "data\chat_history"
 
 
 def main():  # streamlit run main.py
-    setup_config()  # setup webpage
+    st.set_page_config(page_title="LyricChat", page_icon="🎵", layout="centered")
+    setup_interface()  # setup webpage
     display_chat_history()  # display chat history
-    chatbot = rag.LyricRAG()  # initialize RAG-LLM
+    chatbot = cache_LyricChat()  # initialize RAG-LLM
     # start the conversation:
     user_input = st.chat_input(
         "Share what's on your mind. Wonda will find the perfect song to match your mood!"
@@ -73,11 +74,16 @@ def main():  # streamlit run main.py
         st.session_state.chat_history.append(AI_msg(model_response))
         if hasattr(chatbot, "youtube_link"):
             st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
+    setup_interface()  # update download button
 
 
-def setup_config():
+@st.cache_resource  # Use cache_resource for class instances
+def cache_LyricChat():
+    return rag.LyricChat()
+
+
+def setup_interface():
     # TODO: set page configs
-    st.set_page_config(page_title="LyricChat", page_icon="🎵", layout="centered")
     # st.title("LyricChat: Turn your Feelings into Melody")
     st.markdown(
         """
