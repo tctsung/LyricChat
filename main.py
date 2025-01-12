@@ -71,7 +71,7 @@ def main():  # streamlit run main.py
         # save chat history:
         st.session_state.chat_history.append(human_msg(user_input))  # save user input
         st.session_state.chat_history.append(AI_msg(model_response))
-        if hasattr(chatbot, "youtube_link"):
+        if chatbot.youtube_link is not None:
             st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
         st.rerun()  # update download button for chat history
 
@@ -164,7 +164,7 @@ def restart_conversation():
 def display_chat_history():
     # Load chat history into conversation
     if "chat_history" in st.session_state:  # initialize a session w chat history
-        for msg in st.session_state.chat_history:
+        for idx, msg in enumerate(st.session_state.chat_history):
             if msg["role"] == "assistant":
                 with st.chat_message("AI"):
                     st.markdown(msg["content"])
@@ -173,7 +173,7 @@ def display_chat_history():
                     st.markdown(msg["content"])
             elif msg["role"] == "video":
                 with st.chat_message("AI"):
-                    st_player(msg["content"])
+                    st_player(msg["content"], key=f"v{idx}")
 
 
 if __name__ == "__main__":

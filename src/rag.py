@@ -262,6 +262,7 @@ output: I'm thrilled about this chance, but I'm scared of failing
         TODO: first workflow for the chatbot, classify user input emotion
         return: primary_emotion, supporting_emotion
         """
+        self.youtube_link = None  # reset youtuve link
         self.temp_response = None  # buffer for temp response
         messages = [sys_msg(LyricRAG.sys_prompt_classify), human_msg(self.user_input)]
         res = self.model.run(
