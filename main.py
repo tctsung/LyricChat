@@ -31,7 +31,7 @@ def video_msg(video_url):
 
 
 # chat history file:
-chat_history_dir = "data\chat_history"
+chat_history_dir = "data/chat_history"
 
 
 def main():  # streamlit run main.py
@@ -48,8 +48,7 @@ def main():  # streamlit run main.py
         # Stage one, do sentiment analysis for DB filtering
         progress_bar = st.progress(0, text="Identifying emotion...")
         chatbot.user_input = user_input
-        chatbot.chat_history = st.session_state.chat_history
-        chatbot.memory = 5
+
         chatbot.chain_classify()
 
         if chatbot.temp_response is not None:  # LLM suggest don't continue workflow
@@ -73,10 +72,12 @@ def main():  # streamlit run main.py
         st.session_state.chat_history.append(AI_msg(model_response))
         if chatbot.youtube_link is not None:
             st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
+        # update LLM memory to latest 3 conversations
+        chatbot.update_memory(chat_history=st.session_state.chat_history, memory=3)
         st.rerun()  # update download button for chat history
 
 
-@st.cache_resource  # Use cache_resource for class instances
+@st.cache_resource  # Use cache_resource to avoid reload embedding model
 def cache_LyricChat():
     return rag.LyricRAG()
 

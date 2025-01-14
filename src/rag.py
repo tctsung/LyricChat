@@ -85,9 +85,16 @@ If the input is empty or not human readable, encourage the user to chat more or 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed."""
     unclear_response = """If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, `Hmm, Wonda's having a bit of trouble to figure that one out!
 But I'm all ears if you want to chat. I can recommend you some songs too!`"""
+    # language options
+    languages = {
+        "tw": "By default, respond in Traditional Chinese (# zh-tw 正體中文) unless explicitly instructed otherwise",
+        "en": "By default, respond in English (# en) unless explicitly instructed otherwise",
+    }
     # system prompt for Chatbot output (all steps in one prompt)
     sys_prompt_ReACT = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
+
+{language}
 
 To achieve this:
 
@@ -226,8 +233,20 @@ output: I'm thrilled about this chance, but I'm scared of failing
         )
         # buffers:
         self.chat_history = []
+        self.memory = 0
 
-    def chat(self, user_input, chat_history: list = [], memory=0, top_r=5):
+    def update_memory(self, chat_history: list = [], memory=2):
+        # rm role as "video" in chat_history:
+        clean_history = list(msg for msg in chat_history if msg["role"] != "video")
+        self.chat_history = clean_history  # save chat history
+        self.memory = memory  # save memory for chat history
+
+    def chat(
+        self,
+        user_input,
+        top_r=5,
+        language: Literal["tw", "en"] = "tw",
+    ):
         """
         TODO: chain_classify +  chain_rag
         Args:
@@ -246,18 +265,17 @@ output: I'm thrilled about this chance, but I'm scared of failing
             display(Markdown(response))
         """
         self.user_input = user_input  # save user input for all chains
-        self.chat_history = chat_history  # save chat history
-        self.memory = memory  # save memory for chat history
+
         # chain 1: classify user emotion
         self.chain_classify()
         if self.temp_response:
             return self.temp_response
         # chain 2: RAG for song recommendation
         return self.chain_rag(
-            top_r, stream=False
+            top_r, stream=False, language=language
         )  # return response as string or generator
 
-    def chain_classify(self):
+    def chain_classify(self, language: Literal["tw", "en"] = "tw"):
         """
         TODO: first workflow for the chatbot, classify user input emotion
         return: primary_emotion, supporting_emotion
@@ -308,28 +326,37 @@ output: I'm thrilled about this chance, but I'm scared of failing
         # turn to html format string for RAG
         self.retrieved_context = format_song(self.selected_song)
 
-    def chain_rag(self, top_r=5, stream=True):
+    def chain_rag(self, top_r=5, stream=True, language: Literal["tw", "en"] = "tw"):
         """
         TODO: RAG for song recommendation; combine retrieved songs with output template
         Args:
-            streamlit (bool): if True, will return a generator for st.write_stream;
+
+            stream (bool): if True, will return a generator for st.write_stream;
                               otherwise return the whole response as string
+            language: LLM output language
         return: LLM response as string or generator
         """
         self.chain_retrieve(top_r)  # get retrieved songs at self.retrieved_context
         messages = [
             sys_msg(
-                LyricRAG.sys_prompt_ReACT.format(context=self.retrieved_context)
+                LyricRAG.sys_prompt_ReACT.format(
+                    context=self.retrieved_context,
+                    language=LyricRAG.languages[language],
+                )
                 + LyricRAG.one_shot
             ),
             human_msg(self.user_input),
             AI_msg(f"User emotion: {self.user_emotion}"),
         ]
+        # return generator
         if stream:
-            return self.model.stream(messages)  # return generator
+            return self.model.stream(
+                messages, chat_history=self.chat_history, memory=self.memory
+            )
+        # return response as whole string
         return self.model.run(
             messages, chat_history=self.chat_history, memory=self.memory
-        )  # return response as whole string
+        )
 
     def chain_rerank(self):
         """TODO: rerank retrieved songs & collect required info for chatbot
@@ -367,7 +394,7 @@ def format_song(song_info):
     # TODO: turn vector DB results into html format LLM input
     # eg. ```<Artist name> Eminem <\Artist> <Song title> Rap God <\Song title> <Lyric> ... <\Lyric> ```
     metadata = song_info["metadata"]
-    return f"""<Artist name> {metadata['artist']} <\Artist> 
-<Song title> {metadata['title']} <\Song title> 
-<Summary> {song_info['text']} <\Summary>
-<Lyric> {metadata['lyric'][:5000]} <\Lyric>"""
+    return f"""<Artist name> {metadata['artist']} </Artist> 
+<Song title> {metadata['title']} </Song title> 
+<Summary> {song_info['text']} </Summary>
+<Lyric> {metadata['lyric'][:5000]} </Lyric>"""
