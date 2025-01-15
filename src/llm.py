@@ -18,7 +18,7 @@ lyric_msg = lambda lyric: {
 
 
 class InstructorLLM:
-    GEMINI_MODEL = "gemini-1.5-pro"  # gemini-1.5-flash
+    GEMINI_MODEL = "gemini-1.5-flash"  # gemini-1.5-flash
     OLLAMA_MODEL = "llama3"
 
     def __init__(
