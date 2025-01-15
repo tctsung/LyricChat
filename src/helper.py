@@ -26,11 +26,11 @@ def set_loggings(level=logging.INFO, func_name=""):
         level=level,  # set logging level
         format="----- %(levelname)s (%(asctime)s) ----- \n%(message)s\n",
     )  # set messsage format
-    logging.critical(
-        "Hello %s, The current logging level is: %s",
-        func_name,
-        logging.getLevelName(logging.getLogger().getEffectiveLevel()),
-    )
+    # logging.critical(
+    #     "Hello %s, The current logging level is: %s",
+    #     func_name,
+    #     logging.getLevelName(logging.getLogger().getEffectiveLevel()),
+    # )
 
 
 def pickle_save(obj, file_path):
