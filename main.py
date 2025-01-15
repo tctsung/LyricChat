@@ -6,9 +6,10 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 # add src folder to sys.path
 src_folder = os.path.join(script_path, "src")
 sys.path.append(src_folder)
-
 import rag
 from llm import human_msg, AI_msg
+from helper import set_loggings
+import logging
 import pandas as pd
 import streamlit as st
 from streamlit_player import st_player  # embedd music/video
@@ -39,6 +40,7 @@ chat_history_dir = "data/chat_history"
 def main():  # streamlit run main.py
     setup_interface()  # setup webpage
     display_chat_history()  # display chat history
+    set_loggings("info")
     chatbot = cache_LyricChat()  # initialize RAG-LLM
     # start the conversation:
     lbl_chat_input = {
@@ -54,7 +56,7 @@ def main():  # streamlit run main.py
         chatbot.user_input = user_input
 
         chatbot.chain_classify(language=st.session_state.selected_language)
-
+        logging.info(f"Classifier output: {chatbot.classify_res}")  # for BG
         if chatbot.temp_response is not None:  # LLM suggest don't continue workflow
             with st.chat_message("AI"):
                 progress_bar.progress(
@@ -73,6 +75,7 @@ def main():  # streamlit run main.py
                 )
                 model_response = st.write_stream(rag.yield_stream(response))
                 st_player(chatbot.youtube_link)
+                logging.info(f"RAG retrieved context: {chatbot.retrieved_context}")
         # save chat history:
         st.session_state.chat_history.append(human_msg(user_input))  # save user input
         st.session_state.chat_history.append(AI_msg(model_response))
