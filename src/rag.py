@@ -73,15 +73,17 @@ class UserEmotion(BaseModel):
 
 class LyricRAG:
     # include empty string for unidentified emotion
+    backup_collection = "OpenLyrics"
     emotions = [e.value for e in Emotions]
     # system prompt for emotional classification (first step)
     sys_prompt_classify = """You are Wonda, a emotionally intelligent AI assistant. Analyze the user's input to determine the emotional context and sentiment.
-If the input relates to song recommendation, simply do emotion classification.  
+If the input relates to song recommendation, simply do emotion classification in English.  
 If the input is unrelated to song recommendation, try your best to provide brief and helpful response, but remind the user that you're here to recommend songs based on their mood.  
 If the input is empty or not human readable, encourage the user to chat more or share their feelings to receive song recommendations.
+{language}
 """
     # system prompt for chatbot output (step 2 in workflow)
-    sys_prompt_chat = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
+    sys_prompt_chat = """You are Wonda (# zh-tw 幻答), a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed."""
     unclear_response = """If the user's input is empty, unclear, unreadable, or doesn't make sense, respond gently by saying, `Hmm, Wonda's having a bit of trouble to figure that one out!
 But I'm all ears if you want to chat. I can recommend you some songs too!`"""
@@ -91,7 +93,7 @@ But I'm all ears if you want to chat. I can recommend you some songs too!`"""
         "en": "By default, respond in English (# en) unless explicitly instructed otherwise",
     }
     # system prompt for Chatbot output (all steps in one prompt)
-    sys_prompt_ReACT = """You are Wonda, a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
+    sys_prompt_ReACT = """You are Wonda (# zh-tw 幻答), a emotionally intelligent AI assistant. Your mission is to provide support, connect with users on a personal level, and recommend songs that resonate with their current mood. 
 Your top priority is the user's emotional well-being, offering comfort, encouragement, or inspiration as needed.
 
 {language}
@@ -199,18 +201,17 @@ output: I'm thrilled about this chance, but I'm scared of failing
         self,
         deployment: Literal["cloud", "local"] = "cloud",
         url_db=None,
-        collection_name="NEFFEX",
+        prefer_collection="NEFFEX",
     ):
         """
         TODO: main interface for RAG chatbot
         Args:
             deployment (str): cloud or local
             url_db (str): url for Qdrant DB
-            collection_name (str): collection name to use (should be list in the future)
         """
         # set params:
         self.deployment = deployment
-        self.collection_name = collection_name
+        self.prefer_collection = prefer_collection
         if deployment == "cloud":
             self.base_url = None
             self.url_db = (
@@ -267,7 +268,7 @@ output: I'm thrilled about this chance, but I'm scared of failing
         self.user_input = user_input  # save user input for all chains
 
         # chain 1: classify user emotion
-        self.chain_classify()
+        self.chain_classify(language=language)
         if self.temp_response:
             return self.temp_response
         # chain 2: RAG for song recommendation
@@ -282,7 +283,14 @@ output: I'm thrilled about this chance, but I'm scared of failing
         """
         self.youtube_link = None  # reset youtuve link
         self.temp_response = None  # buffer for temp response
-        messages = [sys_msg(LyricRAG.sys_prompt_classify), human_msg(self.user_input)]
+        messages = [
+            sys_msg(
+                LyricRAG.sys_prompt_classify.format(
+                    language=LyricRAG.languages[language]
+                )
+            ),
+            human_msg(self.user_input),
+        ]
         res = self.model.run(
             messages,
             schema=UserEmotion,
@@ -299,9 +307,12 @@ output: I'm thrilled about this chance, but I'm scared of failing
             # user input is unclear/unrelated, suggest to chat more
             self.temp_response = res.response  # update temp response
 
-    def chain_retrieve(self, top_r):
+    def chain_retrieve(self, top_r, use_backup=True):
         """
         TODO: Retrive similar songs in string from DB filtered by user emotion
+        Args:
+            top_r: no. of points to retrieve for prefer_collection (backup_collection always retrieve k songs)
+            use_backup: include backup_collection or not
         """
 
         # Set should_conditions based on emotions without 'Unidentified':
@@ -313,14 +324,20 @@ output: I'm thrilled about this chance, but I'm scared of failing
                 "metadata.supporting_emotion": self.user_emotion,
             }
         )
-
-        # similarity search:
         songs = self.db.read(
-            collection_name=self.collection_name,
+            collection_name=self.prefer_collection,
             query=self.user_input,
             should_conditions=should_conditions,
             limit=top_r,
         )
+        # similarity search for backup DB:
+        songs_bu = self.db.read(
+            collection_name=LyricRAG.backup_collection,
+            query=self.user_input,
+            should_conditions=should_conditions,
+            limit=10,
+        )
+        songs.extend(songs_bu)
         self.retrieved_songs = songs
         self.chain_rerank()
         # turn to html format string for RAG
