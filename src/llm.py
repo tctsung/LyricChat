@@ -7,6 +7,11 @@ from litellm import completion
 import instructor
 import os
 
+from dotenv import dotenv_values
+
+ENV_VAR = dotenv_values()
+os.environ["GEMINI_API_KEY"] = ENV_VAR.get("GEMINI_API_KEY", "")
+
 # Replacements of HumanMessage, AIMessage, SystemMessage in langchain_core.messages
 human_msg = lambda content: {"role": "user", "content": content}
 AI_msg = lambda content: {"role": "assistant", "content": content}
@@ -18,7 +23,7 @@ lyric_msg = lambda lyric: {
 
 
 class InstructorLLM:
-    GEMINI_MODEL = "gemini-1.5-flash"  # gemini-1.5-flash
+    GEMINI_MODEL = "gemini-1.5-flash"  # gemini-1.5-pro only has 2 api calls per min)
     OLLAMA_MODEL = "llama3"
 
     def __init__(
@@ -139,19 +144,53 @@ class InstructorLLM:
         )
         return response.choices[0].message.content or ""
 
-    def stream(self, messages, chat_history: List[dict] = [], memory: int = 2):
+    def stream(
+        self,
+        messages,
+        schema=None,
+        target_attr=None,
+        max_retries=3,
+        chat_history: List[dict] = [],
+        memory: int = 2,
+    ):
+        """
+        TODO: stream LLM output
+        Eg. 1
+        response = llm.stream(messages="who are you?")
+        st.write_stream(response)
+        Eg. 2
+        response = llm.stream(messages="why is the sky blue?")
+        for chunk in response:
+            preprocess_stream(chunk)  # helper func
+        Eg. 3
+        response = llm.stream(messages="why is the sky blue?")
+        """
+        messages = msg_w_memory(messages, chat_history, memory)
+        if schema:  # return a pydantic obj
+            return self._stream_instructor(
+                messages=messages, schema=schema, max_retries=max_retries
+            )
+        else:  # response without instructor
+            return self._stream_litellm(messages=messages)
+
+    def _stream_instructor(self, messages, schema, max_retries):
+        args = {
+            "messages": messages,
+            "response_model": schema,
+            "max_retries": max_retries,
+        }
+        if self.deployment == "local":
+            args["model"] = InstructorLLM.OLLAMA_MODEL
+
+        # get model response (as generator)
+        response = self.client.chat.create_partial(**args)
+        return response
+
+    def _stream_litellm(self, messages, chat_history: List[dict] = [], memory: int = 2):
         """
         TODO: stream LLM response with liteLLM
         Args:
             messages (List[Dict]): list of message dict
-            yield_response (bool): if True, yield response in chunks; otherwise return a generator
-        Eg. 1
-        response = llm.stream(messages="why is the sky blue?", yield_response=True)
-        st.write_stream(response)
-        Eg. 2
-        response = llm.stream(messages="why is the sky blue?", yield_response=False)
-        for chunk in response:
-            print(chunk.choices[0].delta.content or "")
         """
         messages = msg_w_memory(messages, chat_history, memory)
         response = completion(

@@ -49,6 +49,7 @@ def main():  # streamlit run main.py
     }
     user_input = st.chat_input(lbl_chat_input[st.session_state.selected_language])
     if user_input:  # if user type something
+        logging.critical(user_input)
         with st.chat_message("Human"):
             st.markdown(user_input)
         # Stage one, do sentiment analysis for DB filtering
@@ -76,6 +77,7 @@ def main():  # streamlit run main.py
                 model_response = st.write_stream(rag.yield_stream(response))
                 st_player(chatbot.youtube_link)
                 logging.info(f"RAG retrieved context: {chatbot.retrieved_context}")
+        logging.critical(model_response)
         # save chat history:
         st.session_state.chat_history.append(human_msg(user_input))  # save user input
         st.session_state.chat_history.append(AI_msg(model_response))
