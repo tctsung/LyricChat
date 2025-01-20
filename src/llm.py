@@ -216,6 +216,10 @@ def msg_w_memory(messages, chat_history, memory):
     if system_message:  # remove system message from messages
         messages = [msg for msg in messages if msg["role"] != "system"]
 
+    # add chat history tag:
+    messages[0]["content"] = "<chat_history>\n" + messages[0]["content"]
+    messages[-1]["content"] = "\n</chat_history>\n" + messages[0]["content"]
+
     # Limit chat history based on memory
     if memory > 0:
         chat_history = chat_history[-(2 * memory) :]

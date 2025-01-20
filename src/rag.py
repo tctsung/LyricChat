@@ -4,7 +4,8 @@ import llm  # model
 from llm import sys_msg, human_msg, AI_msg, agent_msg
 import qdrant_db as qd  # database
 import os
-from IPython.display import Markdown, display
+import rich  # for Markdown print at console
+from rich.markdown import Markdown
 
 # load prompts
 import src.prompt as prompt
@@ -78,17 +79,12 @@ class LyricRAG:
         if msg_type == "user":
             self.user_input = input
             input = human_msg(input)
-            self.chat_history.append(input)
         else:
             # turn generator into str:
             if hasattr(input, "__iter__") and not isinstance(input, str):
                 input = "".join(list(input))
             input = AI_msg(input)
-            # combine w previous AI msg:
-            if self.chat_history[-1]["role"] == "assistant":
-                self.chat_history[-1]["content"] += input["content"]
-            else:
-                self.chat_history.append(input)
+        self.chat_history.append(input)
         self.full_history.append(input)
 
     def stream_or_run(self, messages, stream):
@@ -102,22 +98,26 @@ class LyricRAG:
             messages, chat_history=self.chat_history, memory=self.memory
         )
 
-    def chat(self, user_input, top_r=3):
+    def chat(self, top_r=3):
         """
-        TODO: chat interface at console, use _chat_workflow() to yield results & save chat_history
+        TODO: chat interface at console, use chat_workflow() to yield results & save chat_history
         Args:
-            user_input (str): user input for chatbot
             top_r (int): number of songs to retrieve from DB as context
         Eg.
             chatbot = rag.LyricRAG()
-            chatbot.chat("I feel so lonely")
+            chatbot.chat()
         """
-        responses = self._chat_workflow(user_input, top_r)
-        for res in responses:
-            display(Markdown(res))
-            self.load_and_save_chat(res, msg_type="AI")
+        while True:
+            user_input = input("User input (or `exit` to leave): ")
+            if user_input.lower() == "exit":
+                break
+            response = self.chat_workflow(user_input, top_r)
+            markdown_text = Markdown(response)
+            rich.print(user_input)
+            rich.print(markdown_text)
+            self.load_and_save_chat(response, msg_type="AI")
 
-    def _chat_workflow(self, user_input, top_r=3):
+    def chat_workflow(self, user_input, top_r=3):
         """
         TODO: Main logic workflow for the chatbot
         the streamlit chatbot workflow should be similar to this
@@ -129,15 +129,11 @@ class LyricRAG:
         ## chain 2:
         # if emotional_support & song_recommendation are both False:
         if not (
-            self.cur_classification.emotional_support
-            or self.cur_classification.recommend_song
+            self.classification.emotional_support or self.classification.recommend_song
         ):
-            yield self.chain_problem_solving(stream=False)
+            return self.chain_problem_solving(stream=False)
         else:
-            if self.cur_classification.emotional_support:  # need emotional support
-                yield self.chain_emotional_support(stream=False)
-            if self.cur_classification.recommend_song:  # only need song
-                yield self.chain_rag(top_r, stream=False)
+            return self.chain_emotional_support(stream=False, top_r=top_r)
 
     def chain_classify(self, memory=3):
         """
@@ -146,15 +142,15 @@ class LyricRAG:
         """
         self.youtube_link = None  # reset youtube link
         messages = [sys_msg(prompt.sys_classify), human_msg(self.user_input)]
-        res = self.model.run(
+        classification = self.model.run(
             messages,
             schema=prompt.UserRequest,
             max_retries=5,
             chat_history=self.chat_history,
             memory=self.memory,
         )
-        self.full_history.append(agent_msg(res))
-        self.cur_classification = res
+        self.full_history.append(agent_msg(classification))
+        self.classification = classification
 
     def chain_problem_solving(self, stream, language=None):
         if language is None:
@@ -165,14 +161,20 @@ class LyricRAG:
         messages = [sys_msg(sys_prompt), human_msg(self.user_input)]
         return self.stream_or_run(messages, stream=stream)
 
-    def chain_emotional_support(self, stream, language=None):
+    def chain_emotional_support(self, stream, language=None, top_r=3):
         if language is None:
             language = self.language
         sys_prompt = (
             prompt.sys_wonda
-            + prompt.psychotherapy_guidelines
             + prompt.languages[language]
+            + prompt.psychotherapy_guidelines
         )
+        if self.classification.recommend_song:
+            self.chain_retrieve(top_r=top_r)  # retrieve songs at self.retrieved_context
+            sys_prompt += (  # add sys instruction for song recommendation
+                prompt.sys_recommend_song.format(context=self.retrieved_context)
+                + prompt.one_shot
+            )
         messages = [sys_msg(sys_prompt), human_msg(self.user_input)]
         return self.stream_or_run(messages, stream=stream)
 
@@ -220,27 +222,6 @@ class LyricRAG:
         idx = random.randint(0, len(self.retrieved_songs) - 1)
         self.selected_song = self.retrieved_songs[idx]
         self.youtube_link = self.selected_song["metadata"]["youtube_link"]
-
-    def chain_rag(self, top_r=3, stream=True, language=None):
-        """
-        TODO: RAG for song recommendation; combine retrieved songs with output template
-        Args:
-
-            stream (bool): if True, will return a generator for st.write_stream;
-                              otherwise return the whole response as string
-            language: LLM output language
-        return: LLM response as string or generator
-        """
-        if language is None:
-            language = self.language
-        self.chain_retrieve(top_r=top_r)  # retrieve songs at self.retrieved_context
-        sys_prompt = (
-            prompt.sys_RAG.format(context=self.retrieved_context)
-            + prompt.languages[language]
-            + prompt.one_shot
-        )
-        messages = [sys_msg(sys_prompt), human_msg(self.user_input)]
-        return self.stream_or_run(messages, stream=stream)
 
 
 ######## Helper Functions ########
