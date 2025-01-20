@@ -6,6 +6,7 @@ from typing_extensions import TypedDict
 from litellm import completion
 import instructor
 import os
+import copy
 
 from dotenv import dotenv_values
 
@@ -204,30 +205,44 @@ class InstructorLLM:
 
 
 ###### Helper functions ######
-def msg_w_memory(messages, chat_history, memory):
-    """TODO: prepare messages with memory"""
+def msg_w_memory(messages, chat_history, memory=-1):
+    """TODO: prepare messages with memory
+    Args:
+        memory (int): default -1 will include all chat history
+    """
     if isinstance(messages, str):
         messages = [human_msg(messages)]
     assert isinstance(messages, list), "messages must be a list"
-    assert isinstance(memory, int), "memory must be an integer"
+    assert isinstance(memory, int) and (
+        memory >= -1
+    ), "memory must be an integer larger than -1"
+    # rm messages with abnormal roles:
+    messages = [
+        msg for msg in messages if msg["role"] in ("system", "user", "assistant")
+    ]
 
     # Extract system message if present
     system_message = [msg for msg in messages if msg["role"] == "system"]
     if system_message:  # remove system message from messages
         messages = [msg for msg in messages if msg["role"] != "system"]
 
-    # add chat history tag:
-    messages[0]["content"] = "<chat_history>\n" + messages[0]["content"]
-    messages[-1]["content"] = "\n</chat_history>\n" + messages[0]["content"]
+    if len(chat_history) > 0:
+        if memory == -1:
+            chat_history_subset = copy.deepcopy(chat_history)
+        else:
+            chat_history_subset = copy.deepcopy(chat_history[-(2 * memory) :])
+        # add html tag:
+        chat_history_subset[0]["content"] = (
+            "<chat_history>\n" + chat_history_subset[0]["content"]
+        )
+        chat_history_subset[-1]["content"] += "\n</chat_history>\n"
+    else:
+        chat_history_subset = None
 
-    # Limit chat history based on memory
-    if memory > 0:
-        chat_history = chat_history[-(2 * memory) :]
-
-    # Combine system message, chat history, and new messages
     combined_messages = []
     combined_messages.extend(system_message)
-    combined_messages.extend(chat_history)
+    if chat_history_subset:
+        combined_messages.extend(chat_history_subset)  # Use the subset
     combined_messages.extend(messages)
     return combined_messages
 

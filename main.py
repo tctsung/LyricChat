@@ -49,42 +49,44 @@ def main():  # streamlit run main.py
     }
     user_input = st.chat_input(lbl_chat_input[st.session_state.selected_language])
     if user_input:  # if user type something
+        # Stage one, identify user need:
+        progress_bar = st.progress(0, text="Identifying user need...")
         logging.critical(user_input)
         with st.chat_message("Human"):
             st.markdown(user_input)
-        # Stage one, do sentiment analysis for DB filtering
-        progress_bar = st.progress(0, text="Identifying emotion...")
-        chatbot.user_input = user_input
-
-        chatbot.chain_classify(language=st.session_state.selected_language)
-        logging.info(f"Classifier output: {chatbot.classify_res}")  # for BG
-        if chatbot.temp_response is not None:  # LLM suggest don't continue workflow
-            with st.chat_message("AI"):
-                progress_bar.progress(
-                    40,
-                    text="Insufficient or unrelated input detected; pausing workflow.",
-                )
-                st.markdown(chatbot.temp_response)
-                model_response = chatbot.temp_response
-        else:  # Stage two, song recommendation
-            progress_bar.progress(
-                40, text=f"Classified emotions: {chatbot.classify_res.emotions}"
-            )
-            with st.chat_message("AI"):
-                response = chatbot.chain_rag(
-                    top_r=3, stream=True, language=st.session_state.selected_language
-                )
-                model_response = st.write_stream(rag.yield_stream(response))
+        # load user input & language for this iter:
+        chatbot.load_and_save_chat(
+            input=user_input,
+            msg_type="user",
+            language=st.session_state.selected_language,
+        )
+        chatbot.chain_classify()
+        progress_bar.progress(
+            50,
+            text=f"Finish Reasoning. Need emotional_support: {chatbot.classification.emotional_support}; need song recommendation: {chatbot.classification.recommend_song}",
+        )
+        logging.info(f"Stage 1: {chatbot.classification}")  # for BG
+        if not (
+            chatbot.classification.emotional_support
+            or chatbot.classification.recommend_song
+        ):
+            response_iter = chatbot.chain_problem_solving(stream=True)
+        else:
+            response_iter = chatbot.chain_emotional_support(stream=True, top_r=3)
+        progress_bar.progress(100, "generating response...")
+        with st.chat_message("AI"):
+            model_response = st.write_stream(rag.yield_stream(response_iter))
+            chatbot.load_and_save_chat(model_response, msg_type="assistant")
+            if chatbot.classification.recommend_song:
                 st_player(chatbot.youtube_link)
-                logging.info(f"RAG retrieved context: {chatbot.retrieved_context}")
+                chatbot.load_and_save_chat(
+                    chatbot.youtube_link, msg_type="agent"
+                )  # agent will be exclude from LLM memory
+
         logging.critical(model_response)
-        # save chat history:
-        st.session_state.chat_history.append(human_msg(user_input))  # save user input
-        st.session_state.chat_history.append(AI_msg(model_response))
-        if chatbot.youtube_link is not None:
-            st.session_state.chat_history.append(video_msg(chatbot.youtube_link))
-        # update LLM memory to latest 3 conversations
-        chatbot.update_memory(chat_history=st.session_state.chat_history, memory=3)
+
+        # update chat history:
+        st.session_state.chat_history = chatbot.chat_history
         st.rerun()  # update download button for chat history
 
 
@@ -226,8 +228,9 @@ def setup_interface():
 
 def restart_conversation():
     """Helper for setup_config() to restart the conversation"""
-    st.session_state.chat_history = []
-    st.session_state.session_ID = uuid.uuid4().hex
+    cache_LyricChat.clear()
+    del st.session_state.chat_history
+    del st.session_state.session_ID
 
 
 def display_chat_history():
@@ -240,7 +243,7 @@ def display_chat_history():
             elif msg["role"] == "user":
                 with st.chat_message("Human"):
                     st.markdown(msg["content"])
-            elif msg["role"] == "video":
+            elif msg["role"] == "agent":
                 with st.chat_message("AI"):
                     st_player(msg["content"], key=f"v{idx}")
 

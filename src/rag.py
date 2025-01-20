@@ -67,14 +67,15 @@ class LyricRAG:
     def load_and_save_chat(
         self,
         input,
-        msg_type: Literal["user", "AI"],
-        language: Literal["tw", "en"] = "en",
+        msg_type: Literal["user", "assistant", "system", "agent"],
+        language=None,
     ):
         """
         TODO: save user input/model output to chat history
         """
         # set language for this iter:
-        self.language = language
+        if language:
+            self.language = language
         # add current user_input into chat history:
         if msg_type == "user":
             self.user_input = input
@@ -82,8 +83,8 @@ class LyricRAG:
         else:
             # turn generator into str:
             if hasattr(input, "__iter__") and not isinstance(input, str):
-                input = "".join(list(input))
-            input = AI_msg(input)
+                input = "".join(str(item) for item in input)
+            input = {"role": msg_type, "content": input}
         self.chat_history.append(input)
         self.full_history.append(input)
 
@@ -115,7 +116,7 @@ class LyricRAG:
             markdown_text = Markdown(response)
             rich.print(user_input)
             rich.print(markdown_text)
-            self.load_and_save_chat(response, msg_type="AI")
+            self.load_and_save_chat(response, msg_type="assistant")
 
     def chat_workflow(self, user_input, top_r=3):
         """
