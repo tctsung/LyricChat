@@ -15,6 +15,7 @@ os.environ["GEMINI_API_KEY"] = ENV_VAR.get("GEMINI_API_KEY", "")
 # Replacements of HumanMessage, AIMessage, SystemMessage in langchain_core.messages
 human_msg = lambda content: {"role": "user", "content": content}
 AI_msg = lambda content: {"role": "assistant", "content": content}
+agent_msg = lambda content: {"role": "agent", "content": content}
 sys_msg = lambda content: {"role": "system", "content": content}
 lyric_msg = lambda lyric: {
     "role": "user",
