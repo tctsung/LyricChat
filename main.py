@@ -48,8 +48,8 @@ def main():  # streamlit run main.py
         "tw": "說說你的心情吧! 幻答會幫你找到最適合的歌",
     }
     user_input = st.chat_input(lbl_chat_input[st.session_state.selected_language])
-    logging.info(f"|||<user input>: {user_input}|||<user input>")
     if user_input:  # if user type something
+        logging.info(f"|||<user input>: {user_input}|||<user input>")
         # Stage one, identify user need:
         progress_bar = st.progress(0, text="Identifying user need...")
         logging.critical(user_input)
