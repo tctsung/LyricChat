@@ -52,6 +52,7 @@ def main():  # streamlit run main.py
         # Stage one, identify user need:
         progress_bar = st.progress(0, text="Identifying user need...")
         logging.critical(user_input)
+        st.session_state.chat_history.append(human_msg(user_input))
         with st.chat_message("Human"):
             st.markdown(user_input)
         # load user input & language for this iter:
@@ -77,13 +78,13 @@ def main():  # streamlit run main.py
         with st.chat_message("AI"):
             model_response = st.write_stream(rag.yield_stream(response_iter))
             chatbot.load_and_save_chat(model_response, msg_type="assistant")
+            st.session_state.chat_history.append(AI_msg(model_response))
             if chatbot.classification.recommend_song:
                 st_player(chatbot.youtube_link)
                 chatbot.load_and_save_chat(
                     chatbot.youtube_link, msg_type="agent"
                 )  # agent will be exclude from LLM memory
-
-        logging.critical(model_response)
+                st.session_state.chat_history.append(AI_msg(chatbot.youtube_link))
 
         # update chat history:
         st.session_state.chat_history = chatbot.chat_history
@@ -229,7 +230,8 @@ def setup_interface():
 def restart_conversation():
     """Helper for setup_config() to restart the conversation"""
     cache_LyricChat.clear()
-    st.session_state.clear()
+    del st.session_state["chat_history"]
+    del st.session_state["session_ID"]
 
 
 def display_chat_history():
