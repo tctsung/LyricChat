@@ -7,7 +7,7 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 src_folder = os.path.join(script_path, "src")
 sys.path.append(src_folder)
 import rag
-from llm import human_msg, AI_msg
+from llm import human_msg, AI_msg, agent_msg
 from helper import set_loggings
 import logging
 import pandas as pd
@@ -48,6 +48,7 @@ def main():  # streamlit run main.py
         "tw": "說說你的心情吧! 幻答會幫你找到最適合的歌",
     }
     user_input = st.chat_input(lbl_chat_input[st.session_state.selected_language])
+    logging.info(f"|||<user input>: {user_input}|||<user input>")
     if user_input:  # if user type something
         # Stage one, identify user need:
         progress_bar = st.progress(0, text="Identifying user need...")
@@ -66,7 +67,7 @@ def main():  # streamlit run main.py
             50,
             text=f"Finish Reasoning. Need emotional_support: {chatbot.classification.emotional_support}; need song recommendation: {chatbot.classification.recommend_song}",
         )
-        logging.info(f"Stage 1: {chatbot.classification}")  # for BG
+        logging.info(f"|||<Stage 1>: {chatbot.classification}|||<Stage 1>")  # for BG
         if not (
             chatbot.classification.emotional_support
             or chatbot.classification.recommend_song
@@ -84,10 +85,10 @@ def main():  # streamlit run main.py
                 chatbot.load_and_save_chat(
                     chatbot.youtube_link, msg_type="agent"
                 )  # agent will be exclude from LLM memory
-                st.session_state.chat_history.append(AI_msg(chatbot.youtube_link))
+                st.session_state.chat_history.append(agent_msg(chatbot.youtube_link))
+        logging.info(f"|||<Stage 2>: {model_response}|||<Stage 2>")
 
         # update chat history:
-        st.session_state.chat_history = chatbot.chat_history
         st.rerun()  # update download button for chat history
 
 
