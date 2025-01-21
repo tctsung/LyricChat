@@ -52,7 +52,6 @@ def main():  # streamlit run main.py
         logging.info(f"|||<user input>: {user_input}|||<user input>")
         # Stage one, identify user need:
         progress_bar = st.progress(0, text="Identifying user need...")
-        logging.critical(user_input)
         st.session_state.chat_history.append(human_msg(user_input))
         with st.chat_message("Human"):
             st.markdown(user_input)
