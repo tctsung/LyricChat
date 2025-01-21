@@ -229,8 +229,7 @@ def setup_interface():
 def restart_conversation():
     """Helper for setup_config() to restart the conversation"""
     cache_LyricChat.clear()
-    del st.session_state.chat_history
-    del st.session_state.session_ID
+    st.session_state.clear()
 
 
 def display_chat_history():
