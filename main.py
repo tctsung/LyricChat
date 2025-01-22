@@ -49,6 +49,9 @@ def main():  # streamlit run main.py
     }
     user_input = st.chat_input(lbl_chat_input[st.session_state.selected_language])
     if user_input:  # if user type something
+        # set input:
+        chatbot.user_input = user_input
+        chatbot.language = st.session_state.selected_language
         logging.info(f"|||<user input>: {user_input}|||<user input>")
         # Stage one, identify user need:
         progress_bar = st.progress(0, text="Identifying user need...")
@@ -56,11 +59,6 @@ def main():  # streamlit run main.py
         with st.chat_message("Human"):
             st.markdown(user_input)
         # load user input & language for this iter:
-        chatbot.load_and_save_chat(
-            input=user_input,
-            msg_type="user",
-            language=st.session_state.selected_language,
-        )
         chatbot.chain_classify()
         progress_bar.progress(
             50,
@@ -77,21 +75,21 @@ def main():  # streamlit run main.py
         progress_bar.progress(100, "generating response...")
         with st.chat_message("AI"):
             model_response = st.write_stream(rag.yield_stream(response_iter))
-            chatbot.load_and_save_chat(model_response, msg_type="assistant")
             st.session_state.chat_history.append(AI_msg(model_response))
             if chatbot.classification.recommend_song:
                 st_player(chatbot.youtube_link)
-                chatbot.load_and_save_chat(
-                    chatbot.youtube_link, msg_type="agent"
-                )  # agent will be exclude from LLM memory
+                # agent will be exclude from LLM memory, but keep in chat history
                 st.session_state.chat_history.append(agent_msg(chatbot.youtube_link))
         logging.info(f"|||<Stage 2>: {model_response}|||<Stage 2>")
 
         # update chat history:
+        chatbot.chat_history = list(
+            map(rag.shorten_msg, st.session_state.chat_history.copy())
+        )
         st.rerun()  # update download button for chat history
 
 
-@st.cache_resource  # Use cache_resource to avoid reload embedding model
+@st.cache_resource  # Use cache_resource to avoid reload embedding model (will be shared for diff. session)
 def cache_LyricChat():
     return rag.LyricRAG()
 

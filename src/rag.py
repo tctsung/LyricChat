@@ -69,6 +69,7 @@ class LyricRAG:
         input,
         msg_type: Literal["user", "assistant", "system", "agent"],
         language=None,
+        shorten=True,
     ):
         """
         TODO: save user input/model output to chat history
@@ -85,6 +86,8 @@ class LyricRAG:
             if hasattr(input, "__iter__") and not isinstance(input, str):
                 input = "".join(str(item) for item in input)
             input = {"role": msg_type, "content": input}
+            if shorten:
+                input = shorten_msg(input)
         self.chat_history.append(input)
         self.full_history.append(input)
 
@@ -241,6 +244,13 @@ def yield_stream(chunks):
     """
     for chunk in chunks:
         yield llm.preprocess_stream(chunk)
+
+
+def shorten_msg(msg):
+    # shorten chat history message: to avoid letting history songs affect song recommendation
+    new_msg = msg.copy()
+    new_msg["content"] = msg["content"].split("\n\n")[0] + "..."
+    return new_msg
 
 
 def get_timestamp():
